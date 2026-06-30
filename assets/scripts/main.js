@@ -696,7 +696,7 @@ ${content}
       text.includes('修改页面') && text.includes('目标元素特征') ||
       text.includes('全局需求文档') ||
       text.includes('全局需求字典') ||
-      text.includes('项目标题和版本号')
+      text.includes('项目元信息')
     );
     if (isPmfwPrompt) {
       let summary = '';
@@ -735,6 +735,11 @@ ${content}
           const feature = featureMatch ? featureMatch[1].trim().substring(0, 40) : '';
           targetId = `ui_${pathMatch[1]}_${feature}`;
         }
+      } else if (text.includes('项目元信息')) {
+        // 项目标题/版本号编辑：固定 targetId，便于冲突检测
+        taskType = 'meta';
+        summary = '修改项目标题/版本号';
+        targetId = 'project_meta';
       } else {
         summary = '其他修改操作';
       }
