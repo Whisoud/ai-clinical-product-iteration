@@ -1,0 +1,145 @@
+/* main.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* 标注高亮框的样式 (注入到 iframe 中使用) */
+.prd-annotation-highlight {
+  position: absolute;
+  border: 2px dashed rgba(59, 130, 246, 0.4);
+  background-color: rgba(59, 130, 246, 0.05);
+  cursor: pointer;
+  z-index: 9999;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  pointer-events: auto; /* 允许鼠标悬浮交互 */
+}
+
+.prd-annotation-highlight.active,
+.prd-annotation-highlight:hover {
+  border: 2px solid rgba(59, 130, 246, 0.9);
+  background-color: rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  z-index: 10000;
+}
+
+.prd-annotation-badge {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 20px;
+  height: 20px;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  pointer-events: auto;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+}
+
+.prd-annotation-highlight.active .prd-annotation-badge,
+.prd-annotation-highlight:hover .prd-annotation-badge {
+  transform: scale(1.1);
+  background-color: #2563eb;
+}
+
+/* PRD 卡片联动高亮样式 */
+.prd-card.active-highlight {
+  border-color: #60a5fa !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  background-color: #f8fafc;
+}
+.prd-card.active-highlight > .absolute {
+  opacity: 1 !important; /* 显示左侧蓝色装饰条 */
+}
+
+/* 覆盖 Markdown 在卡片中生成的标签样式，保持紧凑 */
+.prd-desc-content p {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+.prd-desc-content ul {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+  padding-left: 1.2em;
+  list-style-type: disc;
+}
+.prd-desc-content ol {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+  padding-left: 1.2em;
+  list-style-type: decimal;
+}
+.prd-desc-content strong {
+  font-weight: 600;
+  color: #334155;
+}
+
+/* 解决 Tailwind CDN 无法扫描动态 JS 元素的样式缺失问题 */
+.nav-folder-header {
+  color: #334155; /* slate-700 */
+}
+.nav-folder-header:hover {
+  background-color: #f8fafc; /* slate-50 */
+}
+.nav-item {
+  color: #475569; /* slate-600 */
+}
+.nav-item:hover {
+  background-color: #f8fafc; /* slate-50 */
+}
+.nav-item.active-node {
+  background-color: #eff6ff !important; /* blue-50 */
+  color: #1d4ed8 !important; /* blue-700 */
+  font-weight: 500 !important;
+}
+.nav-item.active-node i {
+  color: #2563eb !important; /* blue-600 */
+}
+
+/* 检查器悬浮高亮 (Inspector) */
+.prd-inspector-hover {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: -2px;
+  cursor: crosshair !important;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  transition: all 0.1s ease;
+}
+
+/* 隐藏编辑视图下的按钮，除非在 edit 模式 */
+#nav-tree:not(.is-edit-view) .nav-edit-btn,
+#nav-tree:not(.is-edit-view) .nav-add-btn,
+#nav-tree:not(.is-edit-view) .nav-delete-btn,
+body:not(.is-edit-view) .is-edit-show,
+#annotation-list:not(.is-edit-view) .prd-edit-btn,
+#annotation-list:not(.is-edit-view) .prd-delete-btn,
+body:not(.is-edit-view) #project-edit-btn,
+body:not(.is-edit-view) #nav-global-add-btn {
+  display: none !important;
+}
+
+/* 交付模式下彻底隐藏所有可能暴露框架状态的非内容控件 */
+body.is-delivery-mode #project-edit-btn,
+body.is-delivery-mode .nav-edit-btn,
+body.is-delivery-mode .nav-add-btn,
+body.is-delivery-mode .nav-delete-btn,
+body.is-delivery-mode .prd-edit-btn,
+body.is-delivery-mode .prd-delete-btn,
+body.is-delivery-mode #edit-global-req-btn {
+  display: none !important;
+}

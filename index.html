@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PM First 静态原型框架</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@0.460.0"></script>
+  <!-- 引入 marked.js 解析 Markdown -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
+  <!-- 引入 DOMPurify 防御 HTML 注入 -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+  <!-- 引入 SortableJS 支持拖拽排序 -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+  <link rel="stylesheet" href="./assets/styles/main.css?v=1.1.0">
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased h-screen flex flex-col overflow-hidden">
+
+  <!-- 顶部导航栏 -->
+  <header class="bg-white border-b border-slate-200 h-14 flex items-center px-4 shrink-0 z-10 relative">
+    
+    <!-- 左侧：标题 -->
+    <div class="flex items-center gap-3 absolute left-4 group pr-8">
+      <!-- 侧边栏折叠/展开按钮 -->
+      <button id="toggle-sidebar-btn" class="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md transition-colors" title="切换侧边栏">
+        <i data-lucide="panel-left" class="w-5 h-5"></i>
+      </button>
+      <h1 class="font-semibold text-lg tracking-tight" id="project-title-display"></h1>
+      <span class="bg-slate-100 text-slate-600 text-xs font-medium px-2 py-0.5 rounded-full border border-slate-200" id="project-version-display"></span>
+
+      <!-- 编辑按钮 (仅在编辑视图显示) -->
+      <button id="project-edit-btn" class="absolute right-0 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 p-1.5 rounded transition-colors opacity-0 group-hover:opacity-100">
+        <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+      </button>
+    </div>
+    
+    <!-- 中间：视图切换器 (绝对居中) -->
+    <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200 mx-auto absolute left-1/2 -translate-x-1/2">
+      <button class="view-switch-btn active bg-white shadow-sm text-slate-800 text-sm font-medium px-4 py-1.5 rounded-md transition-all" data-view="page">
+        页面视图
+      </button>
+      <button class="view-switch-btn text-slate-500 hover:text-slate-700 text-sm font-medium px-4 py-1.5 rounded-md transition-all" data-view="edit">
+        编辑视图
+      </button>
+    </div>
+
+    <!-- 右侧：全局操作 -->
+    <div class="flex items-center gap-2 absolute right-4 group">
+      <button id="global-req-btn" class="flex items-center gap-2 text-sm text-slate-600 hover:text-blue-600 font-medium px-3 py-1.5 rounded-md hover:bg-blue-50 transition-colors">
+        <i data-lucide="book-open" class="w-4 h-4"></i>
+        全局说明
+      </button>
+      <!-- 右侧侧边栏折叠/展开按钮 -->
+      <button id="toggle-prd-btn" class="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md transition-colors ml-2" title="切换需求说明">
+        <i data-lucide="panel-right" class="w-5 h-5"></i>
+      </button>
+    </div>
+  </header>
+
+  <div class="flex flex-1 overflow-hidden relative">
+    <!-- 左侧目录树 -->
+    <aside id="sidebar" class="w-80 bg-white border-r border-slate-200 flex flex-col shrink-0 transition-all duration-300 relative z-20">
+      <!-- 搜索框与全局新增操作 -->
+      <div class="p-3 border-b border-slate-100 flex items-center justify-between gap-2">
+        <div class="relative flex-1" id="search-container">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input type="text" id="nav-search" placeholder="搜索页面..." class="w-full pl-9 pr-3 py-1.5 bg-slate-100 border-transparent rounded-md text-sm focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none">
+        </div>
+        <!-- 顶级新增按钮（仅在编辑视图下通过 CSS 控制显示） -->
+        <button id="nav-global-add-btn" class="nav-add-btn p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="新建顶级页面或模块">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-2" id="nav-tree">
+        <!-- 导航树将由 JS 渲染 -->
+      </div>
+    </aside>
+
+    <!-- 中间主内容区 (原型展示) -->
+    <main class="flex-1 relative bg-slate-100 flex flex-col">
+      <!-- 页面工具栏 -->
+      <div class="h-12 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0">
+        <div class="flex items-center gap-2 text-sm font-medium text-slate-700" id="current-page-title">
+          首页大盘
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="toggle-annotation-btn" class="flex items-center gap-1.5 text-sm text-slate-500 font-medium px-3 py-1 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors">
+            <i data-lucide="message-square-dashed" class="w-4 h-4"></i>
+            <span>显示标注</span>
+          </button>
+        </div>
+      </div>
+      
+      <!-- 原型 iframe 容器 -->
+      <div class="flex-1 relative overflow-hidden p-6 flex justify-center items-start">
+        <!-- 原型 iframe 容器 -->
+        <div class="bg-white w-full h-full rounded-lg shadow-sm border border-slate-200 relative overflow-hidden flex flex-col" id="prototype-container">
+          <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 text-slate-400 z-10">
+            <i data-lucide="layout-template" class="w-16 h-16 mb-4 opacity-50"></i>
+            <p class="text-sm font-medium">当前项目为空</p>
+            <p class="text-xs mt-1">请在左侧新建页面或模块</p>
+          </div>
+
+          <iframe id="prototype-frame" src="about:blank" class="flex-1 w-full border-0 bg-white relative z-20 hidden"></iframe>
+        </div>
+      </div>
+    </main>
+
+    <!-- 右侧 PRD & 标注说明面板 -->
+    <aside class="w-80 bg-white border-l border-slate-200 flex flex-col shrink-0 shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-10 transition-all duration-300 relative" id="prd-panel">
+      <div class="h-12 border-b border-slate-200 flex items-center px-4 shrink-0 bg-slate-50 w-80 whitespace-nowrap">
+        <h2 class="font-semibold text-sm text-slate-800 flex items-center gap-2">
+          <i data-lucide="file-text" class="w-4 h-4 text-blue-600"></i>
+          需求与交互说明
+        </h2>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 space-y-6 w-80" id="annotation-list">
+        <!-- 标注列表将由 JS 根据 iframe 内容生成 -->
+        <div class="text-center text-slate-400 text-sm mt-10">
+          <i data-lucide="mouse-pointer-click" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+          点击左侧原型中的高亮区域查看说明
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- 任务暂存区悬浮按钮 (仅在编辑视图显示) -->
+  <button id="prompt-cart-fab" class="fixed bottom-8 right-8 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 z-40 is-edit-show group">
+    <i data-lucide="layers" class="w-6 h-6"></i>
+    <span id="prompt-cart-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center shadow-sm hidden">0</span>
+    
+    <!-- 悬浮提示 -->
+    <div class="absolute bottom-full right-0 mb-3 bg-slate-800 text-white text-xs px-3 py-1.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+      任务批处理站
+    </div>
+  </button>
+
+  <!-- 任务暂存区抽屉 (默认隐藏) -->
+  <div id="prompt-cart-drawer" class="fixed inset-y-0 right-0 w-[400px] bg-white shadow-2xl border-l border-slate-200 transform translate-x-full transition-transform duration-300 ease-in-out z-50 flex flex-col">
+    <div class="h-14 border-b border-slate-200 flex items-center justify-between px-6 bg-indigo-50">
+      <div class="flex items-center gap-3">
+        <div class="p-1.5 bg-indigo-100 text-indigo-600 rounded-md">
+          <i data-lucide="layers" class="w-5 h-5"></i>
+        </div>
+        <h2 class="font-bold text-slate-800">任务批处理站</h2>
+      </div>
+      <button id="close-cart-btn" class="text-slate-400 hover:text-slate-600 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    
+    <div class="bg-amber-50 px-6 py-3 border-b border-amber-100">
+      <p class="text-xs text-amber-800 flex items-start gap-2">
+        <i data-lucide="info" class="w-4 h-4 shrink-0 mt-0.5"></i>
+        <span>您在编辑视图下的所有操作都会暂存于此，随时一键合并复制给 AI。</span>
+      </p>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-6 space-y-4" id="prompt-cart-list">
+      <!-- 任务列表将由 JS 渲染 -->
+      <div class="text-center text-slate-400 mt-10" id="cart-empty-state">
+        <i data-lucide="inbox" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
+        <p class="text-sm">暂存区为空</p>
+        <p class="text-xs mt-1">去修改导航或添加标注试试吧</p>
+      </div>
+    </div>
+
+    <div class="p-6 border-t border-slate-200 bg-slate-50 space-y-3">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-sm font-medium text-slate-600">待处理任务: <span id="cart-total-count" class="text-indigo-600 font-bold">0</span> 个</span>
+        <button id="clear-cart-btn" class="text-xs text-red-500 hover:text-red-700 font-medium hover:underline">清空全部</button>
+      </div>
+      <button id="copy-all-cart-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2">
+        <i data-lucide="copy" class="w-4 h-4"></i>
+        一键复制所有指令
+      </button>
+      <p class="text-xs text-center text-slate-400">💡 提示：任务积攒过多时，AI 执行可能会出现遗漏，请注意检查</p>
+    </div>
+  </div>
+
+  <!-- 全局需求抽屉 (默认隐藏) -->
+  <div id="global-req-drawer" class="fixed inset-y-0 right-0 w-[600px] bg-white shadow-2xl border-l border-slate-200 transform translate-x-full transition-transform duration-300 ease-in-out z-50 flex flex-col">
+    <div class="h-14 border-b border-slate-200 flex items-center justify-between px-6 bg-slate-50">
+      <div class="flex items-center gap-4">
+        <h2 class="font-semibold text-slate-800">全局需求说明 (PRD)</h2>
+        <button id="edit-global-req-btn" class="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 bg-blue-50 px-2 py-1 rounded hidden">
+          <i data-lucide="edit-2" class="w-3 h-3"></i> 编辑内容
+        </button>
+      </div>
+      <button id="close-req-drawer" class="text-slate-400 hover:text-slate-700 transition-colors p-1">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <div class="flex-1 overflow-hidden relative">
+      <!-- 预览模式 (iframe) -->
+      <div id="global-req-preview" class="w-full h-full p-6 bg-white prose prose-slate max-w-none overflow-y-auto">
+        <iframe src="./docs/overview.html" id="global-req-frame" class="w-full h-full border-0"></iframe>
+      </div>
+      <!-- 编辑模式 (文本框) -->
+      <div id="global-req-editor-container" class="w-full h-full flex flex-col bg-white hidden">
+        <textarea id="global-req-textarea" class="flex-1 w-full p-6 border-none focus:ring-0 resize-none text-sm text-slate-700 font-mono leading-relaxed" placeholder="在此输入 Markdown 或 HTML 内容..."></textarea>
+        <div class="h-14 border-t border-slate-200 flex items-center justify-end gap-2 px-6 bg-slate-50 shrink-0">
+          <button id="cancel-req-edit" class="px-4 py-1.5 border border-slate-300 rounded-md text-sm font-medium text-slate-600 hover:bg-white transition-colors">取消</button>
+          <button id="btn-copy-req-prompt" class="px-4 py-1.5 bg-blue-600 rounded-md text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-1">
+            <i data-lucide="check" class="w-3.5 h-3.5"></i> 保存并复制
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 抽屉遮罩 -->
+  <div id="drawer-overlay" class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 hidden opacity-0 transition-opacity duration-300"></div>
+
+  <!-- 左侧导航编辑/添加弹窗 -->
+  <div id="nav-edit-modal" class="fixed bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200 w-80 z-50 hidden flex-col transition-all duration-200 opacity-0 transform scale-95">
+    <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-xl">
+      <h3 class="font-semibold text-slate-800 text-sm" id="nav-modal-title">编辑导航项</h3>
+      <button id="close-nav-modal" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <div class="p-4 space-y-3">
+      <!-- 隐藏字段，记录操作类型和目标ID -->
+      <input type="hidden" id="nav-modal-action" value="edit">
+      <input type="hidden" id="nav-modal-target-id" value="">
+      <input type="hidden" id="nav-modal-target-type" value="">
+      
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1">名称 (必填)</label>
+        <input type="text" id="nav-modal-name" class="w-full border border-slate-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" placeholder="例如：用户管理模块">
+      </div>
+      <div id="nav-modal-url-container">
+        <label class="block text-xs font-medium text-slate-500 mb-1">页面路径 / 文件名</label>
+        <div class="flex items-center border border-slate-200 rounded-md overflow-hidden focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-colors">
+          <span class="bg-slate-50 px-3 py-1.5 text-slate-500 text-sm border-r border-slate-200 select-none">./pages/</span>
+          <input type="text" id="nav-modal-url" class="w-full px-3 py-1.5 text-sm focus:outline-none" placeholder="例如：test1">
+        </div>
+        <p class="text-[10px] text-slate-400 mt-1">自动添加 .html 后缀</p>
+      </div>
+      <div id="nav-modal-type-container" class="hidden">
+        <label class="block text-xs font-medium text-slate-500 mb-1">新增类型</label>
+        <div class="flex gap-4 mt-1">
+          <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+            <input type="radio" name="nav-add-type" value="page" checked class="text-blue-600 focus:ring-blue-500"> 页面
+          </label>
+          <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+            <input type="radio" name="nav-add-type" value="folder" class="text-blue-600 focus:ring-blue-500"> 文件夹
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="px-4 py-3 bg-slate-50/50 border-t border-slate-100 flex justify-end gap-2 rounded-b-xl">
+      <button id="cancel-nav-edit" class="px-3 py-1.5 border border-slate-200 rounded-md text-xs font-medium text-slate-600 hover:bg-white transition-colors">取消</button>
+      <button id="btn-copy-nav-prompt" class="px-3 py-1.5 bg-blue-600 rounded-md text-xs font-medium text-white hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-1">
+        <i data-lucide="check" class="w-3 h-3"></i> 保存并复制
+      </button>
+    </div>
+  </div>
+
+  <!-- 编辑视图：标注浮窗 (Popover) -->
+  <div id="annotation-modal" class="fixed bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200 w-80 z-50 hidden flex-col transition-all duration-200 opacity-0 transform scale-95">
+    <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-xl">
+      <h3 class="font-semibold text-slate-800 text-sm">编辑操作</h3>
+      <button id="close-annotation-modal" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <div class="p-4 space-y-3">
+      <div id="modal-type-selector-container">
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">操作类型</label>
+        <div class="flex gap-4">
+          <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+            <input type="radio" name="modal-action-type" value="prd" checked class="text-blue-600 focus:ring-blue-500">
+            <span class="text-slate-700">添加交互说明</span>
+          </label>
+          <label class="flex items-center gap-1.5 text-sm cursor-pointer group relative">
+            <input type="radio" name="modal-action-type" value="ui" class="text-emerald-600 focus:ring-emerald-500">
+            <span class="text-slate-700">修改 UI/文案</span>
+            <!-- 悬浮提示 -->
+            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[200px] bg-slate-800 text-white text-xs px-2 py-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-normal text-center shadow-lg">
+              生成修改页面源码的指令，不会作为 PRD 标注显示在右侧
+              <div class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div id="modal-title-container">
+        <label class="block text-xs font-medium text-slate-500 mb-1" id="modal-label-title">标题 (必填)</label>
+        <input type="text" id="modal-input-title" class="w-full border border-slate-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" placeholder="如：核心指标看板">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1" id="modal-label-desc">描述 (支持 Markdown)</label>
+        <textarea id="modal-input-desc" rows="5" class="w-full border border-slate-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors scrollbar-hide" placeholder="描述具体的逻辑..."></textarea>
+      </div>
+    </div>
+    <div class="px-4 py-3 bg-slate-50/50 border-t border-slate-100 flex justify-end gap-2 rounded-b-xl">
+      <button id="cancel-annotation" class="px-3 py-1.5 border border-slate-200 rounded-md text-xs font-medium text-slate-600 hover:bg-white transition-colors">取消</button>
+      <button id="save-annotation" class="px-3 py-1.5 bg-blue-600 rounded-md text-xs font-medium text-white hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-1">
+        <i data-lucide="check" class="w-3 h-3"></i> 保存并复制
+      </button>
+    </div>
+  </div>
+  <!-- 透明遮罩，用于点击外部关闭浮窗 -->
+  <div id="modal-overlay" class="fixed inset-0 z-40 hidden"></div>
+
+  <!-- 全局 Toast 消息容器 -->
+  <div id="toast-container" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] flex flex-col gap-3 pointer-events-none"></div>
+
+  <!-- 项目标题与版本编辑弹窗 -->
+  <div id="project-edit-modal" class="fixed bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200 w-72 z-50 hidden flex-col transition-all duration-200 opacity-0 transform scale-95">
+    <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-xl">
+      <h3 class="font-semibold text-slate-800 text-sm">编辑项目信息</h3>
+      <button id="close-project-modal" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <div class="p-4 space-y-3">
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1">项目标题 (必填)</label>
+        <input type="text" id="project-modal-title" class="w-full border border-slate-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" placeholder="如：PM First Prototype">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-500 mb-1">版本号</label>
+        <input type="text" id="project-modal-version" class="w-full border border-slate-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" placeholder="如：v1.0.0">
+      </div>
+    </div>
+    <div class="px-4 py-3 bg-slate-50/50 border-t border-slate-100 flex justify-end gap-2 rounded-b-xl">
+      <button id="cancel-project-edit" class="px-3 py-1.5 border border-slate-200 rounded-md text-xs font-medium text-slate-600 hover:bg-white transition-colors">取消</button>
+      <button id="btn-copy-project-prompt" class="px-3 py-1.5 bg-blue-600 rounded-md text-xs font-medium text-white hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-1">
+        <i data-lucide="check" class="w-3 h-3"></i> 保存并复制
+      </button>
+    </div>
+  </div>
+
+  <!-- 全局 Confirm 二次确认弹窗 -->
+  <!-- 全局提示框 UI -->
+  <div id="custom-confirm-modal" class="fixed bg-white rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-slate-100 w-[380px] z-[100] hidden flex-col transition-all duration-300 opacity-0 transform scale-95 overflow-hidden">
+    <div class="p-6 pb-5">
+      <div class="flex items-center gap-2 mb-3">
+        <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2" id="confirm-title">提示</h3>
+      </div>
+      <div class="text-sm text-slate-600 leading-relaxed" id="confirm-message">确定要执行此操作吗？</div>
+    </div>
+    <div class="px-6 py-4 bg-slate-50/80 border-t border-slate-100 flex justify-end gap-3">
+      <button id="confirm-cancel-btn" class="px-5 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-200/50 hover:text-slate-900 transition-colors">取消</button>
+      <button id="confirm-ok-btn" class="px-5 py-2 bg-blue-600 rounded-lg text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md">确定</button>
+    </div>
+  </div>
+  <div id="confirm-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[90] hidden"></div>
+
+  <!-- 引入核心逻辑 -->
+  <!-- 引入全局业务数据源 -->
+  <script src="./assets/scripts/project-data.js?v=1.1.0"></script>
+  <!-- 主框架逻辑 (只读) -->
+  <script src="./assets/scripts/main.js?v=1.1.0"></script>
+  <script src="./assets/scripts/prd-renderer.js?v=1.1.0"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "pm-first-static-framework",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "sync-nav": "node scripts/sync-nav.js",
+    "dev": "node scripts/watch.js",
+    "start": "node scripts/serve.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "cheerio": "^1.2.0",
+    "chokidar": "^5.0.0"
+  }
+}
