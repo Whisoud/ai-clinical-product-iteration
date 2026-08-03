@@ -1,6 +1,6 @@
 // serve.js
 // PM 启动本地静态服务器，用于编辑态开发。
-// 用法：npm start 或 node scripts/serve.js
+// 用法：npm start 或 node tools/serve.js
 // 端口默认 3000，被占用则自动尝试 3001-3010
 
 const http = require('http');

@@ -1,19 +1,23 @@
 {
-  "name": "pm-first-static-framework",
+  "name": "pm-framework",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "AI 时代产品经理的原型工作台模版（物理隔离 + 纯净沙箱）",
   "directories": {
     "doc": "docs"
   },
   "scripts": {
-    "sync-nav": "node scripts/sync-nav.js",
-    "dev": "node scripts/watch.js",
-    "start": "node scripts/serve.js"
+    "sync-nav": "node tools/sync-nav.js",
+    "dev": "node tools/watch.js",
+    "start": "node tools/serve.js"
   },
-  "keywords": [],
+  "keywords": [
+    "ai-pm",
+    "prototype",
+    "boilerplate",
+    "sandbox"
+  ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
     "cheerio": "^1.2.0",

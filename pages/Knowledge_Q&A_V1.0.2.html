@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>知识问答 V1.0.2 - 深思智医</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+    
+    :root {
+      --primary-gradient: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
+      --bg-color: #F4F7FF;
+    }
+
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      background-color: #EBEEF7;
+    }
+
+    .client-shell {
+      width: 450px;
+      height: 720px;
+      background-color: var(--bg-color);
+      box-shadow: 0 32px 64px -12px rgba(0, 0, 0, 0.14);
+      border-radius: 32px;
+      overflow: visible;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    /* 顶部窗口标题栏 */
+    .window-header {
+      height: 40px;
+      background: var(--primary-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+      border-top-left-radius: 32px;
+      border-top-right-radius: 32px;
+    }
+
+    /* 侧边栏样式 */
+    .sidebar {
+      width: 90px;
+      background-color: #F0F2F9;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 0;
+      flex-shrink: 0;
+    }
+
+    .sidebar-item {
+      font-size: 11px;
+      color: #64748b;
+      padding: 8px 4px;
+      text-align: center;
+      margin: 2px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .sidebar-item:hover { background-color: #E2E8F0; }
+
+    .sidebar-item.active {
+      background-color: #7C3AED;
+      color: white;
+      font-weight: bold;
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+    }
+
+    .sidebar-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #1e293b;
+      padding: 0 12px;
+      margin-bottom: 8px;
+      margin-top: 16px;
+    }
+
+    /* 主内容区容器 */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background-color: var(--bg-color);
+    }
+
+    /* 滚动内容区 */
+    .scroll-container {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .qa-item {
+      background-color: #F8F9FF;
+      border-radius: 16px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: transform 0.2s, background-color 0.2s;
+    }
+
+    .qa-item:hover {
+      background-color: #F0F2FF;
+      transform: translateX(4px);
+    }
+
+    /* 底部固定输入框 */
+    .input-wrapper {
+      padding: 16px;
+      background-color: var(--bg-color);
+      flex-shrink: 0;
+    }
+
+    .input-area {
+      background-color: white;
+      border-radius: 24px;
+      padding: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+      border: 1px solid #F1F5F9;
+    }
+
+    .send-btn {
+      background-color: #7C3AED;
+      color: white;
+      padding: 8px 20px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    /* 思考中动画 */
+    .thinking-status { 
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+    }
+
+    /* 思考 spinner 与计时 */
+    .thinking-spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid #DDD6FE;
+      border-top-color: #7C3AED;
+      border-radius: 50%;
+      animation: think-spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes think-spin { to { transform: rotate(360deg); } }
+    .thinking-time {
+      font-size: 10px;
+      color: #94a3b8;
+      font-variant-numeric: tabular-nums;
+    }
+    .thinking-collapsed {
+      max-height: 44px !important;
+      overflow: hidden;
+      opacity: 0.8;
+    }
+    .thinking-expanded {
+      max-height: 500px !important;
+    }
+    
+    /* 角标样式 - 极高优先级 */
+    .sup-tag {
+      font-size: 10px !important;
+      font-weight: bold !important;
+      vertical-align: super !important;
+      margin-left: 1px !important;
+      cursor: default !important;
+      display: inline-block !important;
+      line-height: 1 !important;
+      color: #7C3AED !important; /* 强制主题紫色 */
+    }
+    
+    /* 悬浮预览卡片 */
+    .ref-tooltip {
+      position: fixed; /* 改为 fixed 以防父级 overflow 裁剪 */
+      z-index: 9999;
+      width: 240px;
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(12px);
+      border: 1px solid #7C3AED;
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(10px);
+      transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    .ref-tooltip.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+    .ref-tooltip h5 {
+      color: #7C3AED;
+      font-weight: bold;
+      font-size: 11px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid rgba(124, 94, 237, 0.1);
+      padding-bottom: 4px;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .ref-tooltip h5 .ref-id {
+      color: #7C3AED;
+      font-size: 10px;
+      font-weight: bold;
+    }
+    .ref-tooltip p {
+      color: #475569;
+      font-size: 10px;
+      line-height: 1.5;
+      margin: 0;
+    }
+    .ref-tooltip p b {
+      color: #1e293b;
+      font-weight: bold;
+    }
+
+    /* 侧边详情抽屉 - 同步辅助诊疗的外弹样式 */
+    .detail-drawer {
+      position: absolute;
+      top: 40px; /* 避开窗口标题栏 */
+      left: 100%; /* 从框架右侧边缘开始 */
+      width: 320px;
+      height: calc(100% - 40px);
+      background: white;
+      box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
+      z-index: 100;
+      transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+      display: flex;
+      flex-direction: column;
+      border-radius: 0 24px 24px 0; /* 右侧圆角 */
+      border: 1px solid #E2E8F0;
+      border-left: none;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(-20px);
+    }
+    .detail-drawer.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(12px); /* 向右弹出并留出 12px 间隙 */
+    }
+    
+    .drawer-overlay {
+      position: absolute;
+      top: 40px;
+      left: 0;
+      width: 100%;
+      height: calc(100% - 40px);
+      background: rgba(0, 0, 0, 0.05);
+      backdrop-filter: none;
+      z-index: 90;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+    .drawer-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    .evidence-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      background: #F5F3FF;
+      color: #7C3AED;
+      border: 1px solid #DDD6FE;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: bold;
+      margin-top: 4px;
+    }
+
+    /* 会话操作栏 */
+    .session-bar {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+      background-color: var(--bg-color);
+      border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+    }
+    .session-title {
+      font-size: 13px;
+      font-weight: bold;
+      color: #1e293b;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-right: 12px;
+    }
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      border-radius: 8px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    .icon-btn:hover { background-color: #E2E8F0; color: #7C3AED; }
+    .icon-btn.active { background-color: #F5F3FF; color: #7C3AED; }
+    .new-chat-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #7C3AED;
+      background: white;
+      border: 1px solid #DDD6FE;
+      padding: 5px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .new-chat-btn:hover { background-color: #F5F3FF; border-color: #7C3AED; }
+
+    /* 历史会话抽屉 - 壳外右弹，与文献抽屉互斥 */
+    .history-drawer {
+      position: absolute;
+      top: 40px;
+      left: 100%;
+      width: 280px;
+      height: calc(100% - 40px);
+      background: white;
+      box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
+      z-index: 100;
+      transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+      display: flex;
+      flex-direction: column;
+      border-radius: 0 24px 24px 0;
+      border: 1px solid #E2E8F0;
+      border-left: none;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(-20px);
+    }
+    .history-drawer.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(12px);
+    }
+
+    /* 历史会话列表 */
+    .history-search {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 6px 10px;
+      color: #94a3b8;
+    }
+    .history-search input {
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 12px;
+      color: #475569;
+      width: 100%;
+    }
+    .history-group-title {
+      font-size: 11px;
+      font-weight: bold;
+      color: #94a3b8;
+      padding: 12px 18px 4px;
+    }
+    .history-item {
+      margin: 2px 10px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      position: relative;
+      transition: background-color 0.2s;
+    }
+    .history-item:hover { background-color: #F1F5F9; }
+    .history-item.active { background-color: #F5F3FF; }
+    .history-item.active .h-title { color: #7C3AED; font-weight: bold; }
+    .h-title {
+      font-size: 12px;
+      color: #334155;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      padding-right: 22px;
+    }
+    .h-time { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+    .h-del {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      display: none;
+      color: #94a3b8;
+      padding: 2px;
+      border-radius: 6px;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+    }
+    .history-item:hover .h-del { display: block; }
+    .h-del:hover { color: #F43F5E; background: #FFF1F2; }
+
+    /* 隐藏辅助类 */
+    .hidden { display: none !important; }
+    
+    /* 打字机效果光标 */
+    .cursor-blink::after {
+      content: '|';
+      animation: blink 1s infinite;
+      color: #7C3AED;
+    }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    .custom-scroll::-webkit-scrollbar { width: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+
+    /* 多行输入框 */
+    .qa-input {
+      width: 100%;
+      border: none;
+      outline: none;
+      resize: none;
+      font-size: 13px;
+      color: #334155;
+      background: transparent;
+      font-family: inherit;
+      line-height: 1.6;
+      max-height: 120px;
+      overflow-y: auto;
+      display: block;
+    }
+    .qa-input::placeholder { color: #CBD5E1; }
+
+    /* 试试这些 分隔线 */
+    .try-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .try-divider-line { flex: 1; height: 1px; background: #F1F5F9; }
+    .try-divider-text { font-size: 10px; color: #94a3b8; letter-spacing: 2px; }
+
+    /* 场景示例轮播 */
+    .try-carousel-wrap { position: relative; }
+    .try-carousel {
+      position: relative;
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      scroll-snap-type: x proximity;
+      padding: 2px;
+      cursor: grab;
+      -webkit-overflow-scrolling: touch;
+    }
+    .try-carousel::-webkit-scrollbar { display: none; }
+    .try-carousel.dragging { cursor: grabbing; scroll-snap-type: none; }
+    .try-col {
+      flex-shrink: 0;
+      scroll-snap-align: start;
+      width: 246px;
+      display: flex;
+      flex-direction: column;
+    }
+    .try-col-title {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #334155;
+      margin-bottom: 8px;
+    }
+    .try-col-title svg { width: 13px; height: 13px; color: #7C3AED; }
+    .try-col-sub { font-size: 10px; color: #94a3b8; font-weight: normal; margin-left: 2px; }
+    .try-item {
+      padding: 8px 10px;
+      background: #F8F9FF;
+      border-radius: 10px;
+      font-size: 11px;
+      color: #475569;
+      margin-bottom: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: background-color 0.2s, color 0.2s;
+      user-select: none;
+    }
+    .try-item:hover { background: #F0F2FF; color: #1e293b; }
+    .try-record {
+      flex: 1;
+      padding: 10px 12px;
+      background: #F8F9FF;
+      border: 1px solid #EDE9FE;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      user-select: none;
+    }
+    .try-record:hover { background: #F5F3FF; }
+    .try-case-fields { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .try-case-field { display: flex; gap: 6px; align-items: flex-start; }
+    .try-case-label { font-size: 10px; font-weight: bold; color: #7C3AED; flex-shrink: 0; padding-top: 1px; }
+    .try-case-text { font-size: 10px; color: #475569; line-height: 1.5; }
+    .try-record-head {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #1e293b;
+      margin-bottom: 4px;
+    }
+    .try-record-head svg { width: 14px; height: 14px; color: #7C3AED; flex-shrink: 0; }
+    .try-record-meta { font-size: 10px; color: #94a3b8; }
+    .try-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+      height: 24px;
+      border-radius: 9999px;
+      background: #FFFFFF;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      cursor: pointer;
+      z-index: 10;
+      transition: opacity 0.2s, color 0.2s;
+      border: 1px solid #F1F5F9;
+      padding: 0;
+    }
+    .try-arrow:hover { color: #7C3AED; }
+    .try-arrow.left { left: -6px; }
+    .try-arrow.right { right: -6px; }
+    .try-arrow.disabled { opacity: 0.25; pointer-events: none; }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center">
+
+  <div class="client-shell relative" style="overflow: visible;">
+    <!-- 顶部窗口栏 -->
+    <header class="window-header">
+      <div class="flex items-center gap-2">
+        <div class="w-5 h-5 bg-white rounded flex items-center justify-center">
+          <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-[#7046FF]" fill="currentColor"><path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z"/></svg>
+        </div>
+        <span class="text-white text-[13px] font-bold">深思·智医</span>
+      </div>
+      <div class="flex items-center gap-3 text-white/80">
+        <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <div class="h-4 w-[1px] bg-white/20 mx-1"></div>
+        <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+        <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </div>
+    </header>
+
+    <!-- 抽屉遮罩 -->
+    <div id="drawer-overlay" class="drawer-overlay" onclick="closeAllDrawers()"></div>
+    
+    <!-- 详情抽屉 (纯净文献展示) -->
+    <div id="detail-drawer" class="detail-drawer">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-white">
+        <h2 id="drawer-title" class="text-[14px] font-bold text-slate-900 leading-tight truncate pr-4"></h2>
+        <button onclick="closeDrawer()" class="text-slate-400 hover:text-slate-600 flex-shrink-0">
+          <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto custom-scroll p-6">
+        <div id="drawer-full-text" class="text-[13px] text-slate-600 leading-relaxed space-y-4 whitespace-pre-wrap font-serif"></div>
+      </div>
+    </div>
+
+    <!-- 历史会话抽屉 (壳外右弹，与文献抽屉互斥) -->
+    <div id="history-drawer" class="history-drawer" data-prd-id="prd-mt2ka52u-1n6qs">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-white flex-shrink-0">
+        <h2 class="text-[14px] font-bold text-slate-900">历史会话</h2>
+        <button onclick="closeHistoryDrawer()" class="text-slate-400 hover:text-slate-600 flex-shrink-0">
+          <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="px-4 pt-3 flex-shrink-0">
+        <div class="history-search" title="原型阶段预留，暂不可用">
+          <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" placeholder="搜索会话" disabled>
+        </div>
+      </div>
+      <div class="flex-1 overflow-y-auto custom-scroll pb-4" id="history-list"></div>
+    </div>
+
+    <div class="flex flex-1 overflow-hidden">
+      <!-- 侧边栏 -->
+      <aside class="sidebar">
+        <h3 class="sidebar-title">门诊场景</h3>
+        <div class="sidebar-item">特病医保</div>
+        <div class="sidebar-item">辅助诊疗</div>
+        <div class="sidebar-item">检验解析</div>
+        <div class="sidebar-item">病历生成</div>
+        <div class="sidebar-item">病历规整</div>
+        <h3 class="sidebar-title">其他场景</h3>
+        <div class="sidebar-item active">知识问答</div>
+        <div class="sidebar-item">语音输入</div>
+        <div class="mt-auto flex flex-col items-center gap-4 border-t border-slate-200/50 pt-4">
+          <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-400">
+            <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </div>
+          <svg viewBox="0 0 24 24" class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+      </aside>
+
+      <!-- 内容区 -->
+      <main class="main-content relative">
+        <!-- 会话操作栏 -->
+        <div class="session-bar">
+          <span id="session-title" class="session-title">新对话</span>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <button id="history-btn" class="icon-btn" onclick="toggleHistoryDrawer()" title="历史会话" data-prd-id="prd-mt2ka34t-5x8kf">
+              <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </button>
+            <button class="new-chat-btn" onclick="createNewSession()" data-prd-id="prd-mt2ka16s-9q4jd">
+              <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              新对话
+            </button>
+          </div>
+        </div>
+
+        <div class="scroll-container custom-scroll" id="qa-scroll-body">
+          <!-- 1. 欢迎视图 -->
+          <div id="view-initial" class="space-y-6">
+            <div class="bg-white rounded-[24px] p-6 shadow-sm border border-slate-100">
+              <p class="text-[14px] text-slate-700 font-medium leading-relaxed mb-5">
+                您好，我是临床循证知识小助手，可以解答医学问题，也可以根据病历辅助诊疗。
+              </p>
+
+              <!-- 试试这些 分隔线 -->
+              <div class="try-divider">
+                <span class="try-divider-line"></span>
+                <span class="try-divider-text">试试这些</span>
+                <span class="try-divider-line"></span>
+              </div>
+
+              <!-- 场景示例轮播 -->
+              <div class="try-carousel-wrap" data-prd-id="prd-mt2kb11x-5w8re">
+                <button class="try-arrow left disabled" id="try-prev" onclick="scrollTry(-1)" title="上一组">
+                  <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <div class="try-carousel" id="try-carousel"></div>
+                <button class="try-arrow right" id="try-next" onclick="scrollTry(1)" title="下一组">
+                  <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. 回复视图 -->
+          <div id="view-response" class="hidden space-y-6">
+            <div class="flex justify-end">
+              <div id="user-bubble" class="max-w-[85%] bg-[#7C3AED] text-white px-4 py-3 rounded-2xl rounded-tr-none shadow-sm text-[13px] font-medium"></div>
+            </div>
+
+            <div id="ai-reply-container" class="flex flex-col space-y-4">
+              <!-- 思考状态卡片 -->
+              <div id="thinking-card" class="bg-white/60 rounded-2xl p-3 border border-slate-100/50 thinking-status" onclick="toggleThinking()">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2">
+                    <div id="thinking-spinner" class="thinking-spinner"></div>
+                    <svg id="thinking-done" viewBox="0 0 24 24" class="w-3.5 h-3.5 text-emerald-500 hidden" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span id="thinking-label" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">正在思考...</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span id="thinking-time" class="thinking-time">0.0s</span>
+                    <!-- 展开/收起小箭头 -->
+                    <svg id="thinking-arrow" viewBox="0 0 24 24" class="w-3.5 h-3.5 text-slate-400 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+                <div id="step-tags" class="flex flex-wrap gap-2"></div>
+              </div>
+
+              <!-- 流式内容区 -->
+              <div id="stream-content" class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 text-[13px] leading-relaxed text-slate-700 space-y-4 hidden relative" data-prd-id="prd-mt2k9x4q-7w3pz">
+                <div id="typed-text" class="cursor-blink"></div>
+                
+                <!-- 内容底栏：工具按钮 + 免责声明 (Initial hidden) -->
+                <div id="content-footer" class="pt-4 border-t border-slate-50 flex items-center justify-between hidden">
+                  <!-- 左侧工具组 -->
+                  <div class="flex items-center gap-3">
+                    <button class="text-slate-400 hover:text-indigo-500 transition-colors" title="复制">
+                      <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    </button>
+                    <button class="text-slate-400 hover:text-emerald-500 transition-colors" title="点赞">
+                      <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+                    </button>
+                    <button class="text-slate-400 hover:text-rose-500 transition-colors" title="踩">
+                      <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg>
+                    </button>
+                    <button class="text-slate-400 hover:text-blue-500 transition-colors" title="分享">
+                      <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>
+                    </button>
+                  </div>
+                  <!-- 右侧免责声明 -->
+                  <span class="text-[11px] text-slate-400 font-medium">内容基于 AI 生成，仅供参考</span>
+                </div>
+              </div>
+
+              <!-- 参考文献 (Restored) -->
+              <div id="reference-sources" class="px-2 pb-10 hidden">
+                <h4 class="text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-widest flex items-center gap-2" data-prd-id="prd-mt2k9z8r-2m5vn">
+                  <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                  参考文献
+                </h4>
+                <div class="space-y-1.5" id="ref-list-container"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. 历史会话快照视图 -->
+          <div id="view-snapshot" class="hidden space-y-6">
+            <div class="flex justify-end">
+              <div id="snapshot-question" class="max-w-[85%] bg-[#7C3AED] text-white px-4 py-3 rounded-2xl rounded-tr-none shadow-sm text-[13px] font-medium"></div>
+            </div>
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 text-[13px] leading-relaxed text-slate-700">
+              <div id="snapshot-answer" class="space-y-3"></div>
+              <div class="mt-4 pt-3 border-t border-slate-50 flex items-center gap-1.5 text-[11px] text-slate-400">
+                <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                历史会话快照 · 内容基于 AI 生成，仅供参考
+              </div>
+            </div>
+
+            <!-- 快照参考文献 -->
+            <div id="snapshot-refs" class="px-2 pb-10">
+              <h4 class="text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-widest flex items-center gap-2">
+                <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                参考文献
+              </h4>
+              <div class="space-y-1.5" id="snapshot-ref-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 固定输入栏 -->
+        <div class="input-wrapper">
+          <div class="input-area" data-prd-id="prd-mt2ka88w-3k9tc">
+            <textarea id="qa-input" rows="1" placeholder="输入医学问题，或直接粘贴病历…" class="qa-input" oninput="autoGrowInput(this)"></textarea>
+            <div class="flex items-center justify-end mt-3">
+              <button class="send-btn flex-shrink-0">发送</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="global-tooltip" class="ref-tooltip"></div>
+
+  <script>
+    // 循证问答思考步骤
+    const QA_STEPS = [
+      { id: 'analyze', label: '正在分析问题', done: '完成分析', duration: 900 },
+      { id: 'search', label: '正在检索循证知识库', done: '完成检索', duration: 1700 },
+      { id: 'ref', label: '正在匹配文献证据', done: '完成引用', duration: 1300 },
+      { id: 'compose', label: '正在组织回答', done: '完成整理', duration: 800 }
+    ];
+
+    // 病历辅助诊疗思考步骤
+    const RECORD_STEPS = [
+      { id: 'parse', label: '正在解析病历', done: '病历解析完成', duration: 1100 },
+      { id: 'extract', label: '正在提取主诉与病史', done: '完成信息提取', duration: 900 },
+      { id: 'evidence', label: '正在检索循证证据', done: '完成证据检索', duration: 1800 },
+      { id: 'advice', label: '正在生成诊疗建议', done: '建议生成完成', duration: 1000 }
+    ];
+
+    const fullContent = '不明原因发热（FUO/IUO）的鉴别诊断流程应以“先确认是否达到FUO标准→反复寻找潜在诊断线索（PDC）→分层递进检查→必要时有创取材与分子检测→多学科会诊/转诊”为主线，核心是通过病史、体检与基础检查把病因归入感染、非感染性炎症、肿瘤或其他三大类，并据此进入针对性检查路径<span class="sup-tag">[1]</span>。<br><br><b>FUO的界定与初始评估</b><br>· <span class="font-bold">经典FUO定义</span>：≥3周发热（≥38.3℃至少3次），在免疫健全人群中完成最低限度标准检查仍无解释<span class="sup-tag">[2]</span><span class="sup-tag">[3]</span>。<br>· <span class="font-bold">第一步</span>：详细病史+全面体格检查，寻找任何局部化体征或异常，即PDC<span class="sup-tag">[1]</span><span class="sup-tag">[2]</span><span class="sup-tag">[4]</span>。<br>· <span class="font-bold">同步处理</span>：尽量停止或更换可疑药物以排除药物热；避免在稳定期盲目使用抗生素/糖皮质激素以免干扰诊断<span class="sup-tag">[4]</span><span class="sup-tag">[5]</span>。';
+
+    const refData = {
+      "1": { 
+        title: "发热待查诊治专家共识（2026版）", 
+        badge: "证据等级 1A",
+        fullText: "【诊断路径与基本原则】\n不明原因发热（FUO）的诊治应遵循“分层递进、动态评估”的原则。对于经典型FUO，首要任务是排除伪装热及药物热。在进入系统性检查前，必须完成详尽的病史采集和全身体格检查，寻找任何微小的潜在诊断线索（PDC）。\n\n【核心建议】\n1. 基础检查应涵盖：血常规、尿常规、肝肾功能、电解质、血培养（至少2套）、胸部CT及腹部超声。\n2. 若基础检查无阳性发现，应进入第二阶段针对性检查，包括自身抗体筛查（ANA, ANCA等）、特殊病原体血清学（EBV, CMV, 结核IGRA）以及骨髓穿刺。\n3. 对于高度怀疑肿瘤或系统性血管炎但无定位体征者，推荐尽早行18F-FDG PET-CT检查。\n4. 避免在未明确病因前盲目使用抗生素或糖皮质激素，以免掩盖症状或干扰后续活检结果。",
+        url: "http://jk.tb.cn/q.jBv5"
+      },
+      "2": { 
+        title: "Fever of unknown origin (BMJ Review)", 
+        badge: "证据等级 1B",
+        fullText: "Abstract: Fever of unknown origin (FUO) remains one of the most challenging clinical entities. Since Petersdorf and Beeson first defined FUO in 1961, the spectrum of underlying diseases has shifted significantly towards non-infectious inflammatory diseases (NIIDs) and occult malignancies.\n\nDiagnostic Strategy:\n- A structured diagnostic approach is superior to a 'shotgun' method of ordering tests.\n- The 'PDC-driven' strategy focuses on identifying localizing signs or symptoms through repeated physical examinations. \n- In patients with no PDCs after first-line investigations, the probability of finding an underlying cause decreases, but the prognosis is generally favorable with supportive care if the fever remains stable.",
+        url: "http://jk.tb.cn/q.jB05"
+      },
+      "3": { 
+        title: "Fever and inflammation of unknown origin in the 21st century", 
+        badge: "Meta分析",
+        fullText: "【摘要】\n在分子生物学技术高度发达的21世纪，不明原因发热（FUO）的诊断范式正在发生改变。宏基因组二代测序（mNGS）在识别少见病原体（如巴尔通体、立克次体）方面展现出极高的敏感性。\n\n【主要发现】\n- 研究纳入了2015-2025年间的12个多中心队列，共计4,500名患者。\n- mNGS对感染性FUO的诊断贡献率从传统培养的35%提升至62%。\n- 尽管技术进步，仍有约15-20%的患者在出院时病因不明。这部分患者中，自身免疫性疾病的迟发表现占主导地位。",
+        url: "http://jk.tb.cn/q.jBv7"
+      },
+      "4": { 
+        title: "FDG-PET/CT in FUO Review", 
+        badge: "证据等级 2A",
+        fullText: "Technical Considerations for FDG-PET/CT in FUO:\n1. Preparation: Patients must fast for at least 6 hours, and blood glucose levels should be <200 mg/dL to ensure optimal tracer uptake in inflammatory/neoplastic lesions.\n2. Interpretation: A positive PET scan provides a potential biopsy site in 70% of cases. However, false positives are common in healing wounds, post-surgical sites, and certain infections.\n3. Clinical Utility: In a meta-analysis of 18 studies, FDG-PET/CT had a sensitivity of 86% and a specificity of 52% for diagnosing the cause of FUO. It is most effective when used as a second-line tool after non-contributory CT scans.",
+        url: "http://jk.tb.cn/q.lBQJ"
+      },
+      "5": { 
+        title: "Stepwise diagnostic framework", 
+        badge: "专家共识",
+        fullText: "【引言】\n复发性不明原因发热（RUO）与持续性FUO不同，常表现为间歇性发作。其病因谱更多集中在自身炎症性疾病（AID）和周期性发热综合征。\n\n【阶梯式诊断框架】\n- 第一阶梯：确认发热周期性及伴随症状（如皮疹、浆膜炎）。\n- 第二阶梯：基因检测，特别是针对MEFV、ASXL1、TNFRSF1A等基因的靶向测序。\n- 第三阶梯：多学科会诊（MDT）。专家团队应包括感染科、风湿免疫科及遗传咨询师。对于难治性病例，可尝试诊断性治疗（如秋水仙碱），但需在严密监测下进行。",
+        url: "http://jk.tb.cn/q.jBv6"
+      }
+    };
+
+    const contentTooltip = {
+      "1": "...不明原因发热（FUO）的鉴别诊断应遵循<b>分层递进</b>原则，核心是通过病史、体检与基础检查将病因归入<b>感染、非感染性炎症、肿瘤或其他</b>三大类，并据此进入针对性检查路径...",
+      "2": "...经典FUO定义为≥3周发热（≥38.3℃至少3次），在<b>免疫健全人群</b>中完成最低限度标准检查仍无解释。建议至少完成<b>3套血培养</b>以排除隐匿性感染...",
+      "3": "...现代医学环境下，<b>mNGS及PET-CT</b>在早期识别非典型发热病因中具有重要应用价值，可显著提高<b>隐匿病灶</b>的检出率...",
+      "4": "...¹⁸F-FDG PET-CT在无PDC线索的FUO患者中寻找隐匿病灶的<b>灵敏度达85%以上</b>，检查前需<b>调整血糖</b>并尽量停用糖皮质激素...",
+      "5": "...针对复发性不明原因发热，建议采用<b>循序渐进</b>的诊断框架，完成前两阶段检查后仍无明确诊断时，应及时组织<b>多学科会诊（MDT）</b>..."
+    };
+
+    // 当前视图生效的文献数据：FUO 演示用默认 refData/contentTooltip，历史会话切换为各自数据
+    let activeRefData = refData;
+    let activeTooltip = contentTooltip;
+
+    function showTooltip(e, id) {
+      const tooltip = document.getElementById('global-tooltip');
+      const desc = activeTooltip[id];
+      const data = activeRefData[id];
+      if (!tooltip || !desc || !data) return;
+
+      tooltip.innerHTML = `<h5><span class="ref-id">[${id}]</span>${data.title}</h5><p>${desc}</p>`;
+      tooltip.classList.add('visible');
+
+      // 修正定位逻辑：使用 fixed 定位需要相对于窗口
+      const rect = e.target.getBoundingClientRect();
+      const tooltipHeight = tooltip.offsetHeight || 80;
+      tooltip.style.left = `${rect.left - 100}px`;
+      tooltip.style.top = `${rect.top - tooltipHeight - 12}px`;
+    }
+
+    function openDrawer(id) {
+      closeHistoryDrawer(); // 与历史会话抽屉互斥
+      const drawer = document.getElementById('detail-drawer');
+      const overlay = document.getElementById('drawer-overlay');
+      const data = activeRefData[id];
+      if (!drawer || !data) return;
+
+      const titleEl = document.getElementById('drawer-title');
+      const contentEl = document.getElementById('drawer-full-text');
+      
+      if (titleEl) titleEl.innerText = data.title;
+      if (contentEl) contentEl.innerText = data.fullText;
+
+      drawer.classList.add('open');
+      overlay.classList.add('visible');
+    }
+
+    function closeDrawer() {
+      const drawer = document.getElementById('detail-drawer');
+      const overlay = document.getElementById('drawer-overlay');
+      if (drawer) drawer.classList.remove('open');
+      if (overlay) overlay.classList.remove('visible');
+    }
+
+    function hideTooltip() {
+      const tooltip = document.getElementById('global-tooltip');
+      if (tooltip) tooltip.classList.remove('visible');
+    }
+
+    function highlightRefLink(id, active) {
+      const link = document.getElementById(`ref-link-${id}`);
+      if (link) {
+        if (active) link.classList.add('ref-highlight');
+        else link.classList.remove('ref-highlight');
+      }
+    }
+
+    function startQA(presetKey) {
+      const key = presetKey || 'fuo';
+      const preset = QA_PRESETS[key];
+      const initialView = document.getElementById('view-initial');
+      const responseView = document.getElementById('view-response');
+      
+      if (preset && initialView && responseView) {
+        sessionToken++; // 使上一次未完成的思考/流式流程失效
+        closeHistoryDrawer();
+        resetResponseView();
+        activeRefData = preset.refData;
+        activeTooltip = preset.tooltips;
+        currentSession = { type: 'live', presetKey: key, title: preset.title };
+        setSessionTitle(preset.title);
+        renderUserBubble(preset);
+        renderRefList(preset);
+        showView('view-response');
+        runThinkingProcess(preset);
+      } else {
+        console.error('Views not found');
+      }
+    }
+
+    async function runThinkingProcess(preset) {
+      const stepTags = document.getElementById('step-tags');
+      const label = document.getElementById('thinking-label');
+      const spinner = document.getElementById('thinking-spinner');
+      const doneIcon = document.getElementById('thinking-done');
+      const timeEl = document.getElementById('thinking-time');
+
+      if (!stepTags || !label || !spinner) return;
+
+      const token = sessionToken;
+      const steps = preset.steps;
+
+      // 清空之前可能存在的标签
+      stepTags.innerHTML = '';
+
+      // 总计时：每 100ms 刷新，会话切换时自动停止
+      const startTs = performance.now();
+      if (timeEl) timeEl.innerText = '0.0s';
+      const timer = setInterval(() => {
+        if (token !== sessionToken) { clearInterval(timer); return; }
+        if (timeEl) timeEl.innerText = ((performance.now() - startTs) / 1000).toFixed(1) + 's';
+      }, 100);
+
+      for (let i = 0; i < steps.length; i++) {
+        if (token !== sessionToken) { clearInterval(timer); return; } // 会话已切换，中断思考流程
+        const step = steps[i];
+        label.innerText = step.label;
+        const stepStart = performance.now();
+        await new Promise(r => setTimeout(r, step.duration + Math.random() * 400));
+        if (token !== sessionToken) { clearInterval(timer); return; }
+        const stepDur = ((performance.now() - stepStart) / 1000).toFixed(1);
+        
+        const tag = document.createElement('span');
+        tag.className = 'text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full border border-emerald-100 flex items-center gap-1 animate-in fade-in zoom-in duration-300';
+        tag.innerHTML = '<svg viewBox="0 0 24 24" class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' + step.done + ' · ' + stepDur + 's';
+        stepTags.appendChild(tag);
+      }
+
+      clearInterval(timer);
+      const totalDur = ((performance.now() - startTs) / 1000).toFixed(1);
+      label.innerText = '思考完成';
+      spinner.classList.add('hidden');
+      if (doneIcon) doneIcon.classList.remove('hidden');
+      if (timeEl) timeEl.innerText = totalDur + 's';
+      
+      // 思考完成后，延迟 600ms 自动收起思考模块
+      setTimeout(() => {
+        if (token !== sessionToken) return;
+        const card = document.getElementById('thinking-card');
+        const arrow = document.getElementById('thinking-arrow');
+        if (card) {
+          card.classList.add('thinking-collapsed');
+          if (arrow) arrow.style.transform = 'rotate(-90deg)';
+        }
+      }, 600);
+      
+      // 开始流式输出
+      startStreaming(token, preset);
+    }
+
+    function toggleThinking() {
+      const card = document.getElementById('thinking-card');
+      const arrow = document.getElementById('thinking-arrow');
+      const stepTags = document.getElementById('step-tags');
+      
+      if (!card) return;
+
+      if (card.classList.contains('thinking-collapsed')) {
+        card.classList.remove('thinking-collapsed');
+        card.classList.add('thinking-expanded');
+        if (arrow) arrow.style.transform = 'rotate(0deg)';
+        if (stepTags) stepTags.classList.remove('hidden');
+      } else {
+        card.classList.remove('thinking-expanded');
+        card.classList.add('thinking-collapsed');
+        if (arrow) arrow.style.transform = 'rotate(-90deg)';
+      }
+    }
+
+    function startStreaming(token, preset) {
+      const container = document.getElementById('stream-content');
+      const textElement = document.getElementById('typed-text');
+      const scrollArea = document.getElementById('qa-scroll-body');
+      const refSources = document.getElementById('reference-sources');
+      const contentFooter = document.getElementById('content-footer');
+      
+      if (!container || !textElement) return;
+      
+      container.classList.remove('hidden');
+      textElement.innerHTML = ''; // 清空内容
+      
+      // 创建临时容器解析 HTML
+      const temp = document.createElement('div');
+      temp.innerHTML = preset.content;
+      const nodes = Array.from(temp.childNodes);
+      
+      let nodeIndex = 0;
+      let charIndex = 0;
+
+      function typeNode() {
+        if (token !== sessionToken) return; // 会话已切换，中断流式输出
+        if (nodeIndex < nodes.length) {
+          const node = nodes[nodeIndex];
+          
+          if (node.nodeType === Node.TEXT_NODE) {
+            // 文字节点逐字输出 —— 必须用 createTextNode，不能用 innerHTML +=
+            // 否则会销毁已挂载的 sup-tag 元素及其事件处理器
+            if (charIndex < node.textContent.length) {
+              textElement.appendChild(document.createTextNode(node.textContent[charIndex]));
+              charIndex++;
+              setTimeout(typeNode, 15);
+            } else {
+              nodeIndex++;
+              charIndex = 0;
+              typeNode();
+            }
+          } else {
+            // 元素节点直接追加
+            const clone = node.cloneNode(true);
+            
+            // 为角标节点添加交互事件（仅移入浮窗，不展开抽屉）
+            if (clone.classList && clone.classList.contains('sup-tag')) {
+              const refId = clone.textContent.replace(/[\[\]]/g, '');
+
+              clone.addEventListener('mouseenter', function(e) {
+                showTooltip(e, refId);
+              });
+              clone.addEventListener('mouseleave', function() {
+                hideTooltip();
+              });
+            }
+            
+            textElement.appendChild(clone);
+            nodeIndex++;
+            setTimeout(typeNode, 30);
+          }
+          
+          if (scrollArea) {
+            scrollArea.scrollTop = scrollArea.scrollHeight;
+          }
+        } else {
+          textElement.classList.remove('cursor-blink');
+          
+          // 显示内容底栏
+          if (contentFooter) {
+            contentFooter.classList.remove('hidden');
+            contentFooter.classList.add('animate-in', 'fade-in', 'slide-in-from-top-1', 'duration-500');
+          }
+
+          // 内容输出完成后显示参考来源
+          if (refSources) {
+            refSources.classList.remove('hidden');
+            refSources.classList.add('animate-in', 'fade-in', 'slide-in-from-bottom-2', 'duration-500');
+          }
+
+          // 流式输出完成后，为所有已存在的角标补绑事件（双保险，仅移入浮窗）
+          const allTags = textElement.querySelectorAll('.sup-tag');
+          allTags.forEach(function(tag) {
+            const refId = tag.textContent.replace(/[\[\]]/g, '');
+            tag.addEventListener('mouseenter', function(e) {
+              showTooltip(e, refId);
+            });
+            tag.addEventListener('mouseleave', function() {
+              hideTooltip();
+            });
+          });
+        }
+      }
+      typeNode();
+    }
+
+    /* ================= 多轮会话管理 ================= */
+    // 输出中断令牌：切换/新建会话时使进行中的思考与流式输出失效
+    let sessionToken = 0;
+    // 当前会话：null=欢迎页；{ type:'fuo' }=FUO 演示；{ type:'snapshot', id }=查看历史会话
+    let currentSession = null;
+    let archiveSeq = 0;
+
+    // AMI 病历辅助诊疗演示内容（与辅助诊疗页同一案例，形成演示闭环）
+    const AMI_CONTENT = '<b>初步诊断考虑</b>（按可能性排序）<br>① <span class="font-bold">急性心肌梗死（下壁）</span>：高危因素明确，需立即排查<span class="sup-tag">[1]</span><span class="sup-tag">[3]</span><br>② <span class="font-bold">急性胰腺炎</span>：上腹痛伴背部放射的常见鉴别诊断<span class="sup-tag">[4]</span><br>③ <span class="font-bold">主动脉夹层</span>：高血压控制不佳者需警惕<span class="sup-tag">[2]</span><br><br><b>诊断依据</b><br>· <span class="font-bold">急性心肌梗死</span>：患者 50 岁，高血压 10 年、糖尿病 5 年且服药不规律，属冠心病高危人群；上腹持续性压榨样疼痛向背部放射，伴胸闷、心悸、冷汗——约 25%~30% 的 AMI 患者（尤其下壁梗死、老年及糖尿病人群）以胃肠道症状为首发表现<span class="sup-tag">[1]</span><span class="sup-tag">[3]</span>。<br>· <span class="font-bold">急性胰腺炎</span>：上腹剧痛向背部放射符合其典型表现，但患者伴胸闷、冷汗等循环症状，且无饮酒、胆石症等诱因描述，需血淀粉酶/脂肪酶及腹部 CT 鉴别<span class="sup-tag">[4]</span>。<br>· <span class="font-bold">主动脉夹层</span>：长期高血压且控制不佳为高危因素，疼痛可呈撕裂样向背部放射，应测双上肢血压并行增强 CT 排查<span class="sup-tag">[2]</span>。<br><br><b>建议检查</b><br>· <span class="font-bold">立即</span>：18 导联心电图（含右室及后壁导联）、心肌肌钙蛋白动态监测<span class="sup-tag">[1]</span><span class="sup-tag">[3]</span><br>· <span class="font-bold">同步</span>：血常规、血淀粉酶/脂肪酶、D-二聚体、腹部增强 CT<span class="sup-tag">[2]</span><span class="sup-tag">[4]</span><br><br><b>诊疗建议</b><br>· 按急性冠脉综合征流程处置：绝对卧床、心电监护、吸氧、建立静脉通道<span class="sup-tag">[1]</span><br>· 心电图确诊 ST 段抬高后，立即启动再灌注治疗（急诊 PCI 优先），并予双联抗血小板负荷<span class="sup-tag">[1]</span><span class="sup-tag">[3]</span>。';
+
+    const AMI_REFDATA = {
+      '1': {
+        title: '急性ST段抬高型心肌梗死诊断和治疗指南（2023）',
+        badge: '指南',
+        fullText: '【诊断要点】\n持续胸痛 >20 分钟伴心电图 ST 段抬高，或肌钙蛋白动态升高，即可诊断 STEMI。下壁梗死可表现为上腹痛、恶心呕吐等胃肠道症状，老年及糖尿病患者尤不典型。\n\n【再灌注策略】\n发病 12 小时内确诊后应尽快启动再灌注：优先急诊 PCI（FMC-to-B ≤90 分钟）；无法及时 PCI 者予静脉溶栓。确诊后立即给予双联抗血小板负荷剂量。'
+      },
+      '2': {
+        title: '急性胸痛急诊诊疗专家共识（2022）',
+        badge: '专家共识',
+        fullText: '【分层原则】\n急性胸痛按高危（ACS、主动脉夹层、肺栓塞、张力性气胸）→中危→低危分层处置，高危疾病 10 分钟内完成心电图并启动绿色通道。\n\n【夹层警示】\n长期高血压控制不佳、突发撕裂样胸背痛者，应立即测量双上肢血压，压差 >20 mmHg 高度提示主动脉夹层，确诊依赖增强 CT。'
+      },
+      '3': {
+        title: 'Fourth Universal Definition of Myocardial Infarction (2018)',
+        badge: '国际共识',
+        fullText: 'Definition:\nMyocardial infarction requires detection of a rise and/or fall of cardiac troponin with at least one value above the 99th percentile upper reference limit, plus at least one of: symptoms of myocardial ischemia, new ischemic ECG changes, pathological Q waves, imaging evidence of new loss of viable myocardium, or identification of intracoronary thrombus.\n\nNote: In diabetics and the elderly, presentation may be atypical (epigastric discomfort, nausea, syncope).'
+      },
+      '4': {
+        title: '急性胰腺炎诊治指南（2021）',
+        badge: '指南',
+        fullText: '【诊断标准】\n符合以下 3 项中 2 项即可诊断：①特征性上腹疼痛（常向背部放射）；②血清淀粉酶和/或脂肪酶 ≥正常值上限 3 倍；③腹部影像学（增强 CT/MRI/超声）特征性改变。\n\n【初始处理】\n禁食、积极液体复苏、镇痛；病因筛查（胆源性、酒精性、高脂血症性）并针对病因干预。'
+      }
+    };
+
+    const AMI_TOOLTIPS = {
+      '1': '...下壁梗死刺激迷走神经，可表现为 <b>上腹痛、恶心呕吐</b>；确诊后优先 <b>急诊 PCI</b>（FMC-to-B ≤90 分钟）并立即双抗负荷...',
+      '2': '...急性胸痛按 <b>高危→中危→低危</b> 分层；高血压伴撕裂样背痛者测 <b>双上肢血压</b>，压差 >20mmHg 提示夹层...',
+      '3': '...AMI 需肌钙蛋白动态变化（超过 <b>99th 百分位</b>）+ 至少一项 <b>缺血证据</b>；糖尿病及老年患者表现可 <b>不典型</b>...',
+      '4': '...急性胰腺炎诊断 3 选 2：<b>特征性上腹痛</b>、酶学 ≥<b>3 倍上限</b>、影像学证据；初始予禁食、液体复苏...'
+    };
+
+    // 历史会话 mock 数据（医学问题，含循证标识与参考文献）
+    const historySessions = [
+      {
+        id: 'h1', group: '今天', time: '09:15',
+        title: '妊娠期抗生素安全分级',
+        question: '妊娠期抗生素使用的安全分级是什么？',
+        answer: '妊娠期抗生素选择以 <b>FDA 妊娠安全分级</b>与母体-胎儿风险获益评估为基础<span class="sup-tag">[1]</span>。<br><br>· <b>B 级（相对安全）</b>：青霉素类（如阿莫西林）、头孢菌素类、阿奇霉素，为妊娠期首选<span class="sup-tag">[1]</span><span class="sup-tag">[2]</span>。<br>· <b>C 级（权衡使用）</b>：氟喹诺酮类、甲硝唑（孕早期避免）<span class="sup-tag">[2]</span>。<br>· <b>D 级（避免使用）</b>：四环素类（牙齿染色、抑制骨骼发育）、氨基糖苷类（耳毒性风险）<span class="sup-tag">[1]</span>。<br><br>用药前应明确病原体，优先选择窄谱、单药方案<span class="sup-tag">[3]</span>。',
+        refData: {
+          '1': {
+            title: '妊娠期抗菌药物应用专家共识（2023）',
+            badge: '专家共识',
+            fullText: '【分级原则】\n妊娠期抗菌药物选择应基于药物胎盘透过率、致畸风险及母体药代动力学变化综合评估。FDA 五级分类中，B 级药物（青霉素类、头孢菌素类、阿奇霉素）可作为一线选择。\n\n【核心建议】\n1. 孕早期（器官形成期）应避免一切非必要用药；\n2. 四环素类于孕中晚期可致乳牙釉质发育不良及长骨抑制；\n3. 氨基糖苷类存在不可逆耳毒性风险，全程禁用；\n4. 甲硝唑孕早期安全性存争议，建议孕中晚期权衡使用。'
+          },
+          '2': {
+            title: 'ACOG Committee Opinion: Antibiotics in Pregnancy',
+            badge: '指南',
+            fullText: 'Key Recommendations:\n- Penicillins and cephalosporins are first-line agents for most common infections in pregnancy, with extensive safety data.\n- Fluoroquinolones should be reserved for situations without alternatives, given theoretical cartilage toxicity.\n- Nitrofurantoin suits uncomplicated UTI but should be avoided near term in G6PD-deficient patients.'
+          },
+          '3': {
+            title: '围产期感染性疾病诊疗规范（2022版）',
+            badge: '诊疗规范',
+            fullText: '【用药路径】\n围产期感染应遵循"明确病原体→评估妊娠周数→选择窄谱单药"的路径，经验性用药前尽量留取病原学标本。\n\n【监测要点】\n- 用药 48~72 小时评估疗效，及时降阶梯；\n- 剖宫产围术期预防用药单剂即可，不宜超过 24 小时。'
+          }
+        },
+        tooltips: {
+          '1': '...妊娠期抗菌药物应基于 <b>胎盘透过率与致畸风险</b>综合评估，<b>B 级药物</b>（青霉素类、头孢菌素类、阿奇霉素）可作为一线选择...',
+          '2': '...青霉素类与头孢菌素类为妊娠期多数常见感染的 <b>首选药物</b>；氟喹诺酮类因潜在软骨毒性应 <b>限制使用</b>...',
+          '3': '...围产期感染遵循"明确病原体→评估孕周→<b>窄谱单药</b>"路径，用药 <b>48~72 小时</b>评估疗效并及时降阶梯...'
+        }
+      },
+      {
+        id: 'h2', group: '昨天', time: '昨天 16:40',
+        title: '高血压一线用药方案',
+        question: '最新高血压指南推荐的一线用药方案是什么？',
+        answer: '根据最新高血压指南，初始治疗推荐 <b>五大类一线药物</b>：钙通道阻滞剂（CCB）、ACEI、ARB、噻嗪类利尿剂及 β 受体阻滞剂（特定人群）<span class="sup-tag">[1]</span>。<br><br>· 一般患者优先 CCB 或 ACEI/ARB 单药起始<span class="sup-tag">[1]</span>；<br>· 血压 ≥160/100 mmHg 者建议 <b>初始联合用药</b>（优选单片复方制剂）<span class="sup-tag">[1]</span><span class="sup-tag">[2]</span>；<br>· 合并糖尿病或蛋白尿者优先 ACEI/ARB<span class="sup-tag">[2]</span>。',
+        refData: {
+          '1': {
+            title: '中国高血压防治指南（2024年修订版）',
+            badge: '指南',
+            fullText: '【药物治疗原则】\n常用降压药物包括 CCB、ACEI、ARB、噻嗪类利尿剂和 β 受体阻滞剂五大类，均可作为初始治疗选择。\n\n【联合用药】\n血压 ≥160/100 mmHg 或高于目标值 20/10 mmHg 的患者，推荐起始联合治疗，优选单片复方制剂以提高依从性。'
+          },
+          '2': {
+            title: '2023 ESH Guidelines for the Management of Arterial Hypertension',
+            badge: '指南',
+            fullText: 'Key Points:\n- Combination therapy (preferably single-pill) is recommended as initial strategy for most hypertensive patients.\n- ACEI/ARB are preferred in patients with diabetes, chronic kidney disease or albuminuria due to renoprotective effects.\n- Beta-blockers are indicated when specific comorbidities exist (CAD, heart failure, pregnancy).'
+          }
+        },
+        tooltips: {
+          '1': '...五大类降压药物均可作为初始治疗；血压 <b>≥160/100 mmHg</b> 推荐起始联合，优选 <b>单片复方制剂</b>...',
+          '2': '...合并糖尿病、慢性肾病或蛋白尿者优先 <b>ACEI/ARB</b>，具有肾脏保护作用；多数患者建议起始即联合用药...'
+        }
+      },
+      {
+        id: 'h3', group: '昨天', time: '昨天 11:20',
+        title: '糖尿病肾病 SGLT2 选择',
+        question: '糖尿病肾病患者如何选择 SGLT2 抑制剂？',
+        answer: '合并糖尿病肾病的 T2DM 患者，若 eGFR ≥20 ml/min/1.73m²，推荐使用 <b>SGLT2 抑制剂</b>（如达格列净、恩格列净）以延缓肾病进展并降低心血管事件风险<span class="sup-tag">[1]</span><span class="sup-tag">[2]</span>。<br><br>· 起始前评估血容量状态与泌尿生殖感染风险<span class="sup-tag">[1]</span>；<br>· 与 RAS 阻滞剂联用可进一步降低蛋白尿<span class="sup-tag">[2]</span>；<br>· 用药期间定期监测 eGFR 与血钾<span class="sup-tag">[1]</span>。',
+        refData: {
+          '1': {
+            title: '中国2型糖尿病防治指南（2023版）',
+            badge: '指南',
+            fullText: '【推荐意见】\nT2DM 合并慢性肾脏病患者，eGFR ≥20 ml/min/1.73m² 时应使用 SGLT2 抑制剂，以延缓肾病进展、降低心血管不良事件风险（A 级推荐）。\n\n【注意事项】\n起始前评估血容量；用药初期 eGFR 可有一过性下降，无需停药；注意泌尿生殖道感染风险。'
+          },
+          '2': {
+            title: 'DAPA-CKD Trial (NEJM, 2020)',
+            badge: 'RCT',
+            fullText: 'Design: 4304 CKD patients (eGFR 25-75, UACR 200-5000) randomized to dapagliflozin 10mg vs placebo, median follow-up 2.4 years.\n\nResults: Primary composite (≥50% eGFR decline, ESKD, renal/CV death) reduced by 39% (HR 0.61). Benefit consistent in diabetic and non-diabetic CKD subgroups.'
+          }
+        },
+        tooltips: {
+          '1': '...eGFR ≥20 的 T2DM 合并 CKD 患者应使用 <b>SGLT2 抑制剂</b>（A 级推荐）；起始前评估 <b>血容量</b>，初期 eGFR 一过性下降无需停药...',
+          '2': '...达格列净使肾脏复合终点（eGFR 下降 ≥50%、ESKD、肾性/心血管死亡）风险降低 <b>39%</b>（HR 0.61），糖尿病与非糖尿病亚组一致获益...'
+        }
+      },
+      {
+        id: 'h4', group: '7 天内', time: '3 天前',
+        title: '儿童肺炎抗生素疗程',
+        question: '儿童社区获得性肺炎的抗生素疗程是多久？',
+        answer: '儿童社区获得性肺炎（CAP）抗生素疗程应个体化：<b>轻症 5~7 天</b>，重症或并发症者 10~14 天<span class="sup-tag">[1]</span>。<br><br>· 首选阿莫西林或阿莫西林/克拉维酸<span class="sup-tag">[1]</span><span class="sup-tag">[2]</span>；<br>· 非典型病原体（支原体）感染选用大环内酯类<span class="sup-tag">[2]</span>；<br>· 体温正常、症状改善满 48~72 小时可考虑序贯口服<span class="sup-tag">[1]</span>。',
+        refData: {
+          '1': {
+            title: '儿童社区获得性肺炎诊疗规范（2023版）',
+            badge: '诊疗规范',
+            fullText: '【疗程推荐】\n轻症 CAP 抗生素疗程 5~7 天；重症、合并胸腔积液/坏死性肺炎者 10~14 天；支原体感染大环内酯类疗程 10~14 天。\n\n【序贯治疗】\n体温正常 48~72 小时、全身症状改善、可口服给药者，可静脉转口服序贯。'
+          },
+          '2': {
+            title: 'IDSA Guidelines: Pediatric CAP Management',
+            badge: '指南',
+            fullText: 'Recommendations:\n- Amoxicillin is first-line for previously healthy, appropriately immunized children with mild-moderate CAP (strong recommendation).\n- Macrolides should be prescribed when atypical pathogens (M. pneumoniae, C. pneumoniae) are suspected.\n- Shorter courses (5 days) are as effective as longer ones for uncomplicated cases.'
+          }
+        },
+        tooltips: {
+          '1': '...轻症 CAP 疗程 <b>5~7 天</b>；体温正常 <b>48~72 小时</b>且症状改善可静脉转口服序贯...',
+          '2': '...既往健康儿童的轻中度 CAP 首选 <b>阿莫西林</b>（强推荐）；疑非典型病原体时选用 <b>大环内酯类</b>...'
+        }
+      },
+      {
+        id: 'h5', group: '7 天内', time: '5 天前',
+        title: '房颤抗凝出血风险评估',
+        question: '房颤患者抗凝治疗前如何评估出血风险？',
+        answer: '房颤患者启动抗凝前应常规进行 <b>HAS-BLED 评分</b>评估出血风险：≥3 分提示高出血风险，但 <b>并非抗凝禁忌</b>，应纠正可逆危险因素并加强随访<span class="sup-tag">[1]</span><span class="sup-tag">[2]</span>。<br><br>· 优先选择 NOAC（如利伐沙班、达比加群）<span class="sup-tag">[1]</span>；<br>· 定期复查肾功能与血红蛋白<span class="sup-tag">[2]</span>；<br>· 避免与抗血小板药物无指征联用<span class="sup-tag">[1]</span>。',
+        refData: {
+          '1': {
+            title: '2023 ACC/AHA/ACCP/HRS 心房颤动管理指南',
+            badge: '指南',
+            fullText: 'Key Recommendations:\n- Bleeding risk scores (HAS-BLED) should be used to identify modifiable risk factors, not to withhold anticoagulation.\n- NOACs are recommended over warfarin in eligible patients (Class 1, Level A).\n- Concomitant antiplatelet therapy without clear indication increases bleeding without reducing stroke risk.'
+          },
+          '2': {
+            title: 'HAS-BLED 评分验证研究（Pisters et al., Chest）',
+            badge: '队列研究',
+            fullText: '【研究设计】\n纳入 3,456 例房颤患者的前瞻性队列，验证 HAS-BLED 评分对 1 年大出血事件的预测效能。\n\n【主要结果】\n评分 ≥3 分者大出血年发生率显著升高（C 统计量 0.72）；评分动态变化较基线值预测价值更高，支持定期复评。'
+          }
+        },
+        tooltips: {
+          '1': '...出血评分用于识别 <b>可纠正的危险因素</b>，而非拒绝抗凝；符合条件者 <b>NOAC 优先于华法林</b>（1 类推荐，A 级证据）...',
+          '2': '...HAS-BLED ≥3 分大出血风险显著升高（<b>C 统计量 0.72</b>）；评分动态复评的预测价值优于基线单次评估...'
+        }
+      },
+      {
+        id: 'h6', group: '更早', time: '2 周前',
+        title: '慢阻肺急性加重激素指征',
+        question: '慢阻肺急性加重期全身激素的使用指征是什么？',
+        answer: 'AECOPD 患者全身糖皮质激素使用指征：中重度急性加重伴明显气促，或需住院/无创通气支持者<span class="sup-tag">[1]</span>。<br><br>· 推荐 <b>泼尼松 40mg/d，疗程 5 天</b>（短程方案与长程等效）<span class="sup-tag">[2]</span>；<br>· 雾化布地奈德可作为口服替代选择<span class="sup-tag">[1]</span>；<br>· 警惕高血糖、感染扩散等不良事件<span class="sup-tag">[2]</span>。',
+        refData: {
+          '1': {
+            title: 'GOLD 慢性阻塞性肺疾病全球倡议（2025 报告）',
+            badge: '指南',
+            fullText: '【AECOPD 管理】\n全身糖皮质激素用于中重度急性加重：推荐泼尼松 40mg/d、疗程 5 天，可改善肺功能与氧合、缩短恢复时间。\n\n【替代方案】\n部分患者雾化布地奈德（8mg/d）与口服泼尼松龙疗效相当，可作为替代选择。'
+          },
+          '2': {
+            title: 'REDUCE 研究（JAMA, 2013）',
+            badge: 'RCT',
+            fullText: 'Design: 314 AECOPD patients randomized to 5-day vs 14-day prednisone 40mg/d.\n\nResults: 5-day course was non-inferior for re-exacerbation within 6 months (HR 1.01), with significantly reduced cumulative steroid exposure. Supports short-course strategy.'
+          }
+        },
+        tooltips: {
+          '1': '...中重度急性加重推荐 <b>泼尼松 40mg/d × 5 天</b>；雾化布地奈德 8mg/d 疗效与口服相当，可作替代...',
+          '2': '...5 天短程方案在 6 个月内再加重方面 <b>不劣于 14 天</b>（HR 1.01），且显著减少激素累积暴露量...'
+        }
+      }
+    ];
+
+    // 演示预设：循证问答（FUO/妊娠期/高血压）+ 病历辅助诊疗（AMI）
+    // 妊娠期/高血压预设直接复用 historySessions[0]/[1] 的内容与文献数据
+    function presetFromSession(s) {
+      return { kind: 'qa', title: s.title, question: s.question, steps: QA_STEPS, content: s.answer, refData: s.refData, tooltips: s.tooltips, refsOrder: Object.keys(s.refData) };
+    }
+
+    const QA_PRESETS = {
+      fuo: {
+        kind: 'qa',
+        title: '不明原因发热的鉴别诊断',
+        question: '不明原因发热的鉴别诊断流程是什么？',
+        steps: QA_STEPS,
+        content: fullContent,
+        refData: refData,
+        tooltips: contentTooltip,
+        refsOrder: ['1', '2', '3', '4', '5']
+      },
+      pregnancy: presetFromSession(historySessions[0]),
+      hypertension: presetFromSession(historySessions[1]),
+      record: {
+        kind: 'record',
+        title: '病历诊疗：急性上腹痛待查',
+        steps: RECORD_STEPS,
+        recordHtml: '<div class="flex items-center gap-1.5 text-[11px] font-bold text-[#7C3AED] mb-2"><svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>门诊病历 · 女 · 50 岁</div><b>【主诉】</b>上腹部剧烈疼痛伴背部放射痛 2 小时。<br><b>【现病史】</b>患者 2 小时前无明显诱因出现上腹部疼痛，呈持续性压榨感，向背部放射，伴胸闷、心悸、冷汗。无明显发热，无咳嗽咳痰。既往有高血压病史 10 年，糖尿病史 5 年，平时服药不规律。',
+        content: AMI_CONTENT,
+        refData: AMI_REFDATA,
+        tooltips: AMI_TOOLTIPS,
+        refsOrder: ['1', '2', '3', '4']
+      }
+    };
+
+    // 用户气泡：问答=紫色文本气泡；病历=白底病历卡片
+    function renderUserBubble(preset) {
+      const bubble = document.getElementById('user-bubble');
+      if (!bubble) return;
+      if (preset.kind === 'record') {
+        bubble.className = 'max-w-[85%] bg-white border border-violet-200 px-4 py-3 rounded-2xl rounded-tr-none shadow-sm text-[12px] text-slate-600 leading-relaxed';
+        bubble.innerHTML = preset.recordHtml;
+      } else {
+        bubble.className = 'max-w-[85%] bg-[#7C3AED] text-white px-4 py-3 rounded-2xl rounded-tr-none shadow-sm text-[13px] font-medium';
+        bubble.textContent = preset.question;
+      }
+    }
+
+    // 按预设渲染参考文献列表
+    function renderRefList(preset) {
+      const list = document.getElementById('ref-list-container');
+      if (!list) return;
+      list.innerHTML = preset.refsOrder.map(function(id) {
+        return '<div onclick="openDrawer(\'' + id + '\')" class="block text-[10px] text-slate-500 hover:text-slate-800 hover:underline truncate transition-colors p-1 cursor-pointer">'
+          + id + '. ' + preset.refData[id].title + '</div>';
+      }).join('');
+    }
+
+    // 输入框自适应高度（最高 120px）
+    function autoGrowInput(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    }
+
+    // 欢迎区场景配置：新增场景仅需在此添加一项 + QA_PRESETS 加一条，欢迎区高度恒定
+    const WELCOME_SCENARIOS = [
+      {
+        key: 'qa',
+        title: '循证问答',
+        subtitle: '指南 · 证据 · 文献',
+        icon: '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+        examples: [
+          { type: 'text', text: '不明原因发热的鉴别诊断流程是什么？', presetKey: 'fuo' },
+          { type: 'text', text: '妊娠期抗生素使用的安全分级是什么？', presetKey: 'pregnancy' },
+          { type: 'text', text: '最新高血压指南推荐的一线用药方案是什么？', presetKey: 'hypertension' }
+        ]
+      },
+      {
+        key: 'record',
+        title: '病历分析',
+        subtitle: '诊断建议 · 检查推荐',
+        icon: '<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>',
+        examples: [
+          { type: 'record', title: '', meta: '女 · 50 岁 · 高血压 10 年 · 糖尿病 5 年', fields: [{ label: '主诉', text: '上腹部剧烈疼痛伴背部放射痛 2 小时' }, { label: '现病史', text: '2 小时前无诱因出现上腹持续性压榨样疼痛，向背部放射，伴胸闷、心悸、冷汗。无发热，无咳嗽咳痰。' }], presetKey: 'record', prdId: 'prd-mt2ka70v-8r2mb' }
+        ]
+      }
+    ];
+
+    // 渲染欢迎区：场景示例轮播（配置驱动）
+    function renderWelcome() {
+      const carousel = document.getElementById('try-carousel');
+      if (carousel) {
+        carousel.innerHTML = WELCOME_SCENARIOS.map(function(s) {
+          const items = s.examples.map(function(ex) {
+            if (ex.type === 'record') {
+              return '<div class="try-record" onclick="startQA(\'' + ex.presetKey + '\')"' + (ex.prdId ? ' data-prd-id="' + ex.prdId + '"' : '') + '>'
+                + (ex.title ? '<div class="try-record-head">' + s.icon + '<span>' + ex.title + '</span></div>' : '')
+                + '<div class="try-record-meta">' + ex.meta + '</div>'
+                + (ex.fields ? '<div class="try-case-fields">' + ex.fields.map(function(f) { return '<div class="try-case-field"><span class="try-case-label">' + f.label + '</span><span class="try-case-text">' + f.text + '</span></div>'; }).join('') + '</div>' : '')
+                + '</div>';
+            }
+            return '<div class="try-item" onclick="startQA(\'' + ex.presetKey + '\')" title="' + ex.text + '">' + ex.text + '</div>';
+          }).join('');
+          return '<div class="try-col"><div class="try-col-title">' + s.icon + s.title + '<span class="try-col-sub">' + s.subtitle + '</span></div>' + items + '</div>';
+        }).join('');
+      }
+    }
+
+    // 轮播箭头：按列宽翻页
+    function scrollTry(dir) {
+      const carousel = document.getElementById('try-carousel');
+      if (!carousel) return;
+      const col = carousel.querySelector('.try-col');
+      const w = col ? col.offsetWidth + 14 : 260;
+      carousel.scrollBy({ left: dir * w, behavior: 'smooth' });
+    }
+
+    // 箭头到头置灰
+    function updateTryArrows() {
+      const carousel = document.getElementById('try-carousel');
+      const prev = document.getElementById('try-prev');
+      const next = document.getElementById('try-next');
+      if (!carousel || !prev || !next) return;
+      prev.classList.toggle('disabled', carousel.scrollLeft <= 2);
+      next.classList.toggle('disabled', carousel.scrollLeft + carousel.clientWidth >= carousel.scrollWidth - 2);
+    }
+
+    // 鼠标拖拽横向滚动（触屏走原生滚动）；拖拽超 5px 抑制点击
+    function initDragScroll(el, onScroll) {
+      let isDown = false, startX = 0, startLeft = 0, moved = false;
+      el.addEventListener('pointerdown', function(e) {
+        if (e.pointerType !== 'mouse') return;
+        isDown = true;
+        moved = false;
+        startX = e.clientX;
+        startLeft = el.scrollLeft;
+      });
+      el.addEventListener('pointermove', function(e) {
+        if (!isDown) return;
+        const dx = e.clientX - startX;
+        if (Math.abs(dx) > 5) { moved = true; el.classList.add('dragging'); }
+        el.scrollLeft = startLeft - dx;
+      });
+      function endDrag() { isDown = false; el.classList.remove('dragging'); }
+      el.addEventListener('pointerup', endDrag);
+      el.addEventListener('pointercancel', endDrag);
+      el.addEventListener('pointerleave', endDrag);
+      el.addEventListener('click', function(e) {
+        if (moved) { e.stopPropagation(); e.preventDefault(); }
+      }, true);
+      if (onScroll) el.addEventListener('scroll', onScroll);
+    }
+
+    // 欢迎区初始化
+    (function initWelcome() {
+      renderWelcome();
+      const carousel = document.getElementById('try-carousel');
+      if (carousel) {
+        initDragScroll(carousel, updateTryArrows);
+        updateTryArrows();
+      }
+    })();
+
+    function setSessionTitle(t) {
+      const el = document.getElementById('session-title');
+      if (el) el.textContent = t;
+    }
+
+    function showView(id) {
+      ['view-initial', 'view-response', 'view-snapshot'].forEach(function(v) {
+        const el = document.getElementById(v);
+        if (el) el.classList.toggle('hidden', v !== id);
+      });
+    }
+
+    function resetResponseView() {
+      const card = document.getElementById('thinking-card');
+      const arrow = document.getElementById('thinking-arrow');
+      const spinner = document.getElementById('thinking-spinner');
+      const doneIcon = document.getElementById('thinking-done');
+      const label = document.getElementById('thinking-label');
+      const timeEl = document.getElementById('thinking-time');
+      const stepTags = document.getElementById('step-tags');
+      const container = document.getElementById('stream-content');
+      const textElement = document.getElementById('typed-text');
+      const contentFooter = document.getElementById('content-footer');
+      const refSources = document.getElementById('reference-sources');
+
+      if (card) card.classList.remove('hidden', 'thinking-collapsed', 'thinking-expanded');
+      if (arrow) arrow.style.transform = '';
+      if (spinner) spinner.classList.remove('hidden');
+      if (doneIcon) doneIcon.classList.add('hidden');
+      if (label) label.innerText = '正在思考...';
+      if (timeEl) timeEl.innerText = '0.0s';
+      if (stepTags) stepTags.innerHTML = '';
+      if (container) container.classList.add('hidden');
+      if (textElement) { textElement.innerHTML = ''; textElement.classList.add('cursor-blink'); }
+      if (contentFooter) contentFooter.classList.add('hidden');
+      if (refSources) refSources.classList.add('hidden');
+    }
+
+    // 全局 Toast：优先走工作台外壳 API（file:// 跨域时静默降级）
+    function toast(msg) {
+      try {
+        if (window.parent && typeof window.parent.showToast === 'function') {
+          window.parent.showToast(msg);
+          return;
+        }
+      } catch (err) { /* file:// 协议跨域，忽略 */ }
+    }
+
+    // 二次确认：优先走工作台外壳 API，降级为原生 confirm
+    function confirmAction(title, message, onConfirm) {
+      try {
+        if (window.parent && typeof window.parent.showConfirm === 'function') {
+          window.parent.showConfirm(title, message, onConfirm, '删除', 'danger');
+          return;
+        }
+      } catch (err) { /* file:// 协议跨域，走降级 */ }
+      if (window.confirm(message)) onConfirm();
+    }
+
+    function renderHistoryList() {
+      const container = document.getElementById('history-list');
+      if (!container) return;
+      const groups = ['今天', '昨天', '7 天内', '更早'];
+      let html = '';
+      groups.forEach(function(g) {
+        const items = historySessions.filter(function(s) { return s.group === g; });
+        if (!items.length) return;
+        html += '<div class="history-group-title">' + g + '</div>';
+        items.forEach(function(s) {
+          const active = currentSession && currentSession.type === 'snapshot' && currentSession.id === s.id;
+          html += '<div class="history-item' + (active ? ' active' : '') + '" onclick="openHistorySession(\'' + s.id + '\')">'
+            + '<div class="h-title">' + s.title + '</div>'
+            + '<div class="h-time">' + s.time + '</div>'
+            + '<button class="h-del" onclick="deleteSession(event, \'' + s.id + '\')" title="删除会话">'
+            + '<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
+            + '</button>'
+            + '</div>';
+        });
+      });
+      container.innerHTML = html || '<div class="text-center text-[12px] text-slate-300 py-12">暂无历史会话</div>';
+    }
+
+    function toggleHistoryDrawer() {
+      const drawer = document.getElementById('history-drawer');
+      const btn = document.getElementById('history-btn');
+      const overlay = document.getElementById('drawer-overlay');
+      if (!drawer) return;
+      const willOpen = !drawer.classList.contains('open');
+      closeDrawer(); // 与文献抽屉互斥
+      if (willOpen) {
+        renderHistoryList();
+        drawer.classList.add('open');
+        if (overlay) overlay.classList.add('visible');
+        if (btn) btn.classList.add('active');
+      } else {
+        closeHistoryDrawer();
+      }
+    }
+
+    function closeHistoryDrawer() {
+      const drawer = document.getElementById('history-drawer');
+      const overlay = document.getElementById('drawer-overlay');
+      const btn = document.getElementById('history-btn');
+      const detail = document.getElementById('detail-drawer');
+      if (drawer) drawer.classList.remove('open');
+      if (btn) btn.classList.remove('active');
+      if (overlay && detail && !detail.classList.contains('open')) {
+        overlay.classList.remove('visible');
+      }
+    }
+
+    function closeAllDrawers() {
+      closeDrawer();
+      closeHistoryDrawer();
+    }
+
+    // 进行中的演示会话归档到「今天」顶部（同名会话置顶刷新，不重复归档）
+    function archiveCurrentSession() {
+      if (currentSession && currentSession.type === 'live') {
+        const dup = historySessions.findIndex(function(x) { return x.title === currentSession.title; });
+        if (dup > -1) historySessions.splice(dup, 1);
+        archiveSeq++;
+        historySessions.unshift({
+          id: 'arch-' + archiveSeq,
+          group: '今天',
+          title: currentSession.title,
+          time: '刚刚',
+          snapshotType: 'preset',
+          presetKey: currentSession.presetKey
+        });
+      }
+      currentSession = null;
+    }
+
+    function bindRefTagEvents(container) {
+      if (!container) return;
+      container.querySelectorAll('.sup-tag').forEach(function(tag) {
+        const refId = tag.textContent.replace(/[\[\]]/g, '');
+        tag.addEventListener('mouseenter', function(e) { showTooltip(e, refId); });
+        tag.addEventListener('mouseleave', function() { hideTooltip(); });
+      });
+    }
+
+    // 历史快照：静态渲染指定预设（跳过思考与流式）
+    function renderStaticPreset(presetKey) {
+      const preset = QA_PRESETS[presetKey || 'fuo'];
+      if (!preset) return;
+      activeRefData = preset.refData;
+      activeTooltip = preset.tooltips;
+      resetResponseView();
+      showView('view-response');
+      renderUserBubble(preset);
+      renderRefList(preset);
+      const card = document.getElementById('thinking-card');
+      const container = document.getElementById('stream-content');
+      const textElement = document.getElementById('typed-text');
+      const contentFooter = document.getElementById('content-footer');
+      const refSources = document.getElementById('reference-sources');
+
+      if (card) card.classList.add('hidden'); // 历史快照不展示思考过程
+      if (container) container.classList.remove('hidden');
+      if (textElement) {
+        textElement.innerHTML = preset.content;
+        textElement.classList.remove('cursor-blink');
+        bindRefTagEvents(textElement);
+      }
+      if (contentFooter) contentFooter.classList.remove('hidden');
+      if (refSources) refSources.classList.remove('hidden');
+    }
+
+    // 渲染历史会话快照的参考文献列表（点击弹出文献抽屉）
+    function renderSnapshotRefs(s) {
+      const list = document.getElementById('snapshot-ref-list');
+      if (!list) return;
+      const ids = Object.keys(s.refData || {});
+      list.innerHTML = ids.map(function(id) {
+        return '<div onclick="openDrawer(\'' + id + '\')" class="block text-[10px] text-slate-500 hover:text-slate-800 hover:underline truncate transition-colors p-1 cursor-pointer">'
+          + id + '. ' + s.refData[id].title + '</div>';
+      }).join('');
+    }
+
+    function openHistorySession(id) {
+      const s = historySessions.find(function(x) { return x.id === id; });
+      if (!s) return;
+      sessionToken++; // 中断进行中的输出
+      archiveCurrentSession(); // 进行中的演示会话先归档
+      currentSession = { type: 'snapshot', id: s.id, title: s.title };
+      setSessionTitle(s.title);
+      if (s.snapshotType === 'preset') {
+        renderStaticPreset(s.presetKey);
+      } else {
+        // 切换到该会话自己的文献数据
+        activeRefData = s.refData || {};
+        activeTooltip = s.tooltips || {};
+        const qEl = document.getElementById('snapshot-question');
+        const aEl = document.getElementById('snapshot-answer');
+        if (qEl) qEl.textContent = s.question;
+        if (aEl) {
+          aEl.innerHTML = s.answer;
+          bindRefTagEvents(aEl); // 角标悬停浮窗
+        }
+        renderSnapshotRefs(s);
+        showView('view-snapshot');
+      }
+      closeHistoryDrawer();
+      renderHistoryList(); // 更新高亮
+      const scrollArea = document.getElementById('qa-scroll-body');
+      if (scrollArea) scrollArea.scrollTop = 0;
+    }
+
+    function createNewSession() {
+      sessionToken++; // 中断进行中的输出
+      const hadContent = !!currentSession;
+      archiveCurrentSession();
+      setSessionTitle('新对话');
+      resetResponseView();
+      showView('view-initial');
+      closeHistoryDrawer();
+      renderHistoryList();
+      const scrollArea = document.getElementById('qa-scroll-body');
+      if (scrollArea) scrollArea.scrollTop = 0;
+      if (!hadContent) toast('当前已是新对话');
+    }
+
+    function deleteSession(e, id) {
+      if (e) e.stopPropagation();
+      const s = historySessions.find(function(x) { return x.id === id; });
+      if (!s) return;
+      confirmAction('删除会话', '确定删除会话「' + s.title + '」吗？', function() {
+        const idx = historySessions.findIndex(function(x) { return x.id === id; });
+        if (idx > -1) historySessions.splice(idx, 1);
+        if (currentSession && currentSession.type === 'snapshot' && currentSession.id === id) {
+          currentSession = null;
+          sessionToken++;
+          setSessionTitle('新对话');
+          showView('view-initial');
+        }
+        renderHistoryList();
+      });
+    }
+  </script>
+  <script src="../assets/scripts/page-bridge.js"></script>
+</body>
+</html>

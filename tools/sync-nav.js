@@ -4,7 +4,7 @@ const cheerio = require('cheerio');
 
 // 修改为相对于项目根目录的正确路径
 const pagesDir = path.join(__dirname, '..', 'pages');
-const dataJsPath = path.join(__dirname, '..', 'assets', 'scripts', 'project-data.js');
+const dataJsPath = path.join(__dirname, '..', 'data', 'project-data.js');
 
 // 扫描 pages 目录
 function scanPages(dir, relativePath = './pages') {

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PM First 静态原型框架</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://unpkg.com/lucide@0.460.0"></script>
   <!-- 引入 marked.js 解析 Markdown -->
   <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
   <!-- 引入 SortableJS 支持拖拽排序 -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
-  <link rel="stylesheet" href="./assets/styles/main.css?v=1.1.0">
+  <link rel="stylesheet" href="./assets/styles/main.css?v=1.3.0">
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans antialiased h-screen flex flex-col overflow-hidden">
 
@@ -84,9 +84,9 @@
           首页大盘
         </div>
         <div class="flex items-center gap-2">
-          <button id="toggle-annotation-btn" class="flex items-center gap-1.5 text-sm text-slate-500 font-medium px-3 py-1 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors">
+          <button id="toggle-annotation-btn" class="flex items-center gap-1.5 text-sm text-blue-600 font-medium px-3 py-1 bg-blue-50 rounded-md hover:bg-slate-200 transition-colors">
             <i data-lucide="message-square-dashed" class="w-4 h-4"></i>
-            <span>显示标注</span>
+            <span>隐藏标注</span>
           </button>
         </div>
       </div>
@@ -114,11 +114,27 @@
           需求与交互说明
         </h2>
       </div>
+      <!-- 走查导航条：上一条/下一条逐条定位标注，"全部高亮"为总览逃生门 -->
+      <div class="h-10 border-b border-slate-100 flex items-center justify-between px-3 shrink-0 bg-white w-80" id="walkthrough-bar">
+        <div class="flex items-center gap-1">
+          <button id="walk-prev" class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="上一条标注">
+            <i data-lucide="chevron-up" class="w-4 h-4"></i>
+          </button>
+          <span id="walk-counter" class="text-xs text-slate-500 font-medium min-w-[36px] text-center tabular-nums">0/0</span>
+          <button id="walk-next" class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="下一条标注">
+            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <button id="toggle-show-all-btn" class="flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 font-medium px-2 py-1 rounded-md hover:bg-blue-50 transition-colors" title="显示/隐藏全部标注高亮">
+          <i data-lucide="highlighter" class="w-3.5 h-3.5"></i>
+          <span>全部高亮</span>
+        </button>
+      </div>
       <div class="flex-1 overflow-y-auto p-4 space-y-6 w-80" id="annotation-list">
-        <!-- 标注列表将由 JS 根据 iframe 内容生成 -->
+        <!-- 标注列表将由 JS 根据 iframe 内 page-bridge.js 上报的清单生成 -->
         <div class="text-center text-slate-400 text-sm mt-10">
           <i data-lucide="mouse-pointer-click" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-          点击左侧原型中的高亮区域查看说明
+          点击原型中的标注徽章，或用上方走查按钮逐条查看
         </div>
       </div>
     </aside>
@@ -192,13 +208,13 @@
       </button>
     </div>
     <div class="flex-1 overflow-hidden relative">
-      <!-- 预览模式 (iframe) -->
-      <div id="global-req-preview" class="w-full h-full p-6 bg-white prose prose-slate max-w-none overflow-y-auto">
-        <iframe src="./docs/overview.html" id="global-req-frame" class="w-full h-full border-0"></iframe>
+      <!-- 预览模式 (由 main.js 渲染 Markdown → HTML 注入此处，样式见 main.css 的 #global-req-preview 段) -->
+      <div id="global-req-preview" class="w-full h-full p-6 bg-white max-w-none overflow-y-auto">
+        <!-- 内容来自 project-data.js 的 window.OverviewContent，由 main.js 渲染 -->
       </div>
       <!-- 编辑模式 (文本框) -->
       <div id="global-req-editor-container" class="w-full h-full flex flex-col bg-white hidden">
-        <textarea id="global-req-textarea" class="flex-1 w-full p-6 border-none focus:ring-0 resize-none text-sm text-slate-700 font-mono leading-relaxed" placeholder="在此输入 Markdown 或 HTML 内容..."></textarea>
+        <textarea id="global-req-textarea" class="flex-1 w-full p-6 border-none focus:ring-0 resize-none text-sm text-slate-700 font-mono leading-relaxed" placeholder="在此输入 Markdown 内容..."></textarea>
         <div class="h-14 border-t border-slate-200 flex items-center justify-end gap-2 px-6 bg-slate-50 shrink-0">
           <button id="cancel-req-edit" class="px-4 py-1.5 border border-slate-300 rounded-md text-sm font-medium text-slate-600 hover:bg-white transition-colors">取消</button>
           <button id="btn-copy-req-prompt" class="px-4 py-1.5 bg-blue-600 rounded-md text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-1">
@@ -346,10 +362,10 @@
 
   <!-- 引入核心逻辑 -->
   <!-- 引入全局业务数据源 -->
-  <script src="./assets/scripts/project-data.js?v=1.1.0"></script>
+  <script src="./data/project-data.js?v=1.3.0"></script>
   <!-- 主框架逻辑 (只读) -->
-  <script src="./assets/scripts/main.js?v=1.1.0"></script>
-  <script src="./assets/scripts/prd-renderer.js?v=1.1.0"></script>
+  <script src="./assets/scripts/main.js?v=1.2.0"></script>
+  <script src="./assets/scripts/prd-renderer.js?v=2.1.1"></script>
   <script>
     lucide.createIcons();
   </script>

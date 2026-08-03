@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>辅助诊疗 - 深思智医</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+    
+    :root {
+      --primary-gradient: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
+      --bg-color: #F4F7FF;
+    }
+
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      background-color: #EBEEF7;
+    }
+
+    .client-shell {
+      width: 450px;
+      height: 720px;
+      background-color: var(--bg-color);
+      box-shadow: 0 32px 64px -12px rgba(0, 0, 0, 0.14);
+      border-radius: 32px;
+      overflow: visible;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    /* 顶部窗口标题栏 */
+    .window-header {
+      height: 40px;
+      background: var(--primary-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+      border-top-left-radius: 32px;
+      border-top-right-radius: 32px;
+    }
+
+    /* 侧边栏样式 */
+    .sidebar {
+      width: 90px;
+      background-color: #F0F2F9;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 0;
+      flex-shrink: 0;
+    }
+
+    .sidebar-item {
+      font-size: 11px;
+      color: #64748b;
+      padding: 8px 4px;
+      text-align: center;
+      margin: 2px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .sidebar-item:hover { background-color: #E2E8F0; }
+
+    .sidebar-item.active {
+      background-color: #7C3AED;
+      color: white;
+      font-weight: bold;
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+    }
+
+    .sidebar-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #1e293b;
+      padding: 0 12px;
+      margin-bottom: 8px;
+      margin-top: 16px;
+    }
+
+    /* 主内容区容器 */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background-color: var(--bg-color);
+    }
+
+    /* 滚动内容区 */
+    .scroll-container {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .qa-item {
+      background-color: #F8F9FF;
+      border-radius: 16px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: transform 0.2s, background-color 0.2s;
+    }
+
+    .qa-item:hover {
+      background-color: #F0F2FF;
+      transform: translateX(4px);
+    }
+
+    /* 底部固定输入框 */
+    .input-wrapper {
+      padding: 16px;
+      background-color: var(--bg-color);
+      flex-shrink: 0;
+    }
+
+    .input-area {
+      background-color: white;
+      border-radius: 24px;
+      padding: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+      border: 1px solid #F1F5F9;
+    }
+
+    .send-btn {
+      background-color: #7C3AED;
+      color: white;
+      padding: 8px 20px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    /* 顶部导航与卡片区域优化 - 移除紫色底色 */
+    .top-section {
+      background: white;
+      border-bottom: 1px solid #F1F5F9;
+      padding: 12px 20px;
+      margin: -20px -20px 24px -20px;
+    }
+    .top-nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #64748B;
+      margin-bottom: 16px;
+    }
+    .nav-tab {
+      transition: all 0.3s;
+      position: relative;
+      padding-bottom: 4px;
+    }
+    .nav-tab.active {
+      color: #7C3AED;
+    }
+    .nav-tab.active::after {
+      content: "";
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: #7C3AED;
+      border-radius: 2px;
+    }
+    
+    .patient-info-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #F8FAFC;
+      border-radius: 16px;
+    }
+    
+    .regenerate-btn {
+      background: white;
+      color: #7C3AED;
+      padding: 6px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: bold;
+      border: 1px solid #DDD6FE;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .regenerate-btn:hover {
+      background: #F5F3FF;
+      border-color: #7C3AED;
+    }
+
+    /* 疾病预测手风琴样式 */
+    .disease-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+    .disease-item.expanded .disease-content {
+      max-height: 500px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #E2E8F0;
+    }
+    .disease-item.expanded .arrow-icon {
+      transform: rotate(0deg);
+    }
+    .disease-item.selected .radio-circle {
+      border-color: #7C3AED;
+    }
+    .disease-item.selected .radio-circle div {
+      display: block;
+    }
+    .arrow-icon {
+      transform: rotate(-90deg);
+      transition: transform 0.3s ease;
+    }
+    .section-title-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .section-icon {
+      width: 20px;
+      height: 20px;
+      background: #F5F3FF;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #7C3AED;
+    }
+    .disease-item {
+      background: white;
+      border: 1px solid #F1F5F9;
+      border-radius: 16px;
+      padding: 12px 16px;
+      margin-bottom: 8px;
+    }
+    .disease-item.active {
+      border-color: #DDD6FE;
+      background: #FAFAFF;
+    }
+    .diagnosis-basis {
+      font-size: 12px;
+      line-height: 1.6;
+      color: #475569;
+      margin-top: 10px;
+      padding-top: 0;
+      border-top: none;
+    }
+    .diagnosis-basis-label {
+      color: #10B981;
+      font-weight: bold;
+      margin-right: 4px;
+    }
+    .tab-btn {
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    .tab-btn.active {
+      background: #FFDADA;
+      color: #B91C1C;
+    }
+    .tab-btn.inactive {
+      background: #F1F5F9;
+      color: #64748B;
+    }
+    .result-table {
+      width: 100%;
+      font-size: 11px;
+      border-collapse: collapse;
+    }
+    .result-table th {
+      background: #F8FAFC;
+      color: #64748B;
+      font-weight: normal;
+      text-align: left;
+      padding: 8px;
+      border-bottom: 1px solid #F1F5F9;
+    }
+    .result-table td {
+      padding: 8px;
+      color: #1E293B;
+      border-bottom: 1px solid #F1F5F9;
+    }
+
+    /* 角标样式 - 极高优先级 */
+    .sup-tag {
+      font-size: 10px !important;
+      font-weight: bold !important;
+      vertical-align: super !important;
+      margin-left: 1px !important;
+      cursor: default !important;
+      display: inline-block !important;
+      line-height: 1 !important;
+      color: #7C3AED !important;
+    }
+
+    /* 悬浮预览卡片 */
+    .ref-tooltip {
+      position: fixed;
+      z-index: 9999;
+      width: 240px;
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(12px);
+      border: 1px solid #7C3AED;
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(10px);
+      transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    .ref-tooltip.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+    .ref-tooltip h5 {
+      color: #7C3AED;
+      font-weight: bold;
+      font-size: 11px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid rgba(124, 94, 237, 0.1);
+      padding-bottom: 4px;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .ref-tooltip p {
+      color: #475569;
+      font-size: 10px;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    /* 侧边详情抽屉 - 调整为向右弹出且不被框架裁剪 */
+    .detail-drawer {
+      position: absolute;
+      top: 40px; /* 避开窗口标题栏 */
+      left: 100%; /* 从框架右侧边缘开始 */
+      width: 320px;
+      height: calc(100% - 40px);
+      background: white;
+      box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
+      z-index: 100;
+      transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+      display: flex;
+      flex-direction: column;
+      border-radius: 0 24px 24px 0; /* 右侧圆角 */
+      border: 1px solid #E2E8F0;
+      border-left: none;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(-20px); /* 初始向左微偏 */
+    }
+    .detail-drawer.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(12px); /* 向右弹出并留出 12px 间隙 */
+    }
+    
+    /* 遮罩层仅覆盖框架内部或不使用遮罩以突出外部弹出感 */
+    .drawer-overlay {
+      position: absolute;
+      top: 40px;
+      left: 0;
+      width: 100%;
+      height: calc(100% - 40px);
+      background: rgba(0, 0, 0, 0.05); /* 极浅透明背景，不模糊 */
+      backdrop-filter: none; /* 移除模糊效果 */
+      z-index: 90;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+    .drawer-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    /* 原始病历抽屉特有样式 */
+    .case-drawer {
+      background: #F8FAFC;
+    }
+    .case-content-card {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center">
+
+  <div class="client-shell relative" style="overflow: visible;">
+    <!-- 顶部窗口栏 -->
+    <header class="window-header">
+      <div class="flex items-center gap-2">
+        <div class="w-5 h-5 bg-white rounded flex items-center justify-center">
+          <svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-[#7046FF]" fill="currentColor"><path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z"/></svg>
+        </div>
+        <span class="text-white text-[13px] font-bold">深思·智医</span>
+      </div>
+      <div class="flex items-center gap-3 text-white/80">
+        <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <div class="h-4 w-[1px] bg-white/20 mx-1"></div>
+        <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+        <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </div>
+    </header>
+
+    <!-- 抽屉遮罩 -->
+    <div id="drawer-overlay" class="drawer-overlay" onclick="closeDrawer()"></div>
+    
+    <!-- 详情抽屉 (文献原文) -->
+    <div id="detail-drawer" class="detail-drawer">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-white">
+        <h2 id="drawer-title" class="text-[14px] font-bold text-slate-900 leading-tight truncate pr-4"></h2>
+        <button onclick="closeDrawer()" class="text-slate-400 hover:text-slate-600 flex-shrink-0">
+          <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto custom-scroll p-6">
+        <div id="drawer-full-text" class="text-[13px] text-slate-600 leading-relaxed space-y-4 whitespace-pre-wrap font-serif"></div>
+      </div>
+    </div>
+
+    <!-- 原始病历抽屉 -->
+    <div id="case-drawer" class="detail-drawer case-drawer">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-white">
+        <h2 class="text-[14px] font-bold text-slate-900">原始病历原文</h2>
+        <button onclick="closeDrawer()" class="text-slate-400 hover:text-slate-600 flex-shrink-0">
+          <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto custom-scroll p-6">
+        <div class="case-content-card text-[13px] text-slate-600 leading-relaxed space-y-4 font-serif">
+          <p><b>【主诉】</b> 上腹部剧烈疼痛伴背部放射痛2小时。</p>
+          <p><b>【现病史】</b> 患者2小时前无明显诱因出现上腹部疼痛，呈持续性压榨感，向背部放射，伴胸闷、心悸、冷汗。无明显发热，无咳嗽咳痰。既往有高血压病史10年，糖尿病史5年，平时服药不规律。</p>
+          <p><b>【体格检查】</b> T 36.5℃，P 102次/分，R 22次/分，BP 158/96mmHg。神志清，急性面容，大汗淋漓。双肺呼吸音清，心律齐，未闻及病理性杂音。腹软，上腹部轻压痛，无反跳痛及肌紧张。</p>
+          <p><b>【辅助检查】</b> 暂缺。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex flex-1 overflow-hidden">
+      <!-- 侧边栏 -->
+      <aside class="sidebar">
+        <h3 class="sidebar-title">门诊场景</h3>
+        <div class="sidebar-item">特病医保</div>
+        <div class="sidebar-item active">辅助诊疗</div>
+        <div class="sidebar-item">检验解析</div>
+        <div class="sidebar-item">病历生成</div>
+        <div class="sidebar-item">病历规整</div>
+        <h3 class="sidebar-title">其他场景</h3>
+        <div class="sidebar-item">知识问答</div>
+        <div class="sidebar-item">语音输入</div>
+        <div class="mt-auto flex flex-col items-center gap-4 border-t border-slate-200/50 pt-4">
+          <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-400">
+            <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </div>
+          <svg viewBox="0 0 24 24" class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+      </aside>
+
+      <!-- 内容区 -->
+      <main class="main-content relative">
+        <div class="scroll-container custom-scroll" id="qa-scroll-body">
+          <!-- 诊断结果视图 -->
+          <div id="view-result" class="space-y-6">
+            <!-- 顶部导航与患者信息区域 -->
+            <div class="top-section">
+              <div class="top-nav-bar">
+                <div class="flex items-center gap-2 text-[13px] cursor-pointer hover:text-slate-900 transition-colors">
+                  <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3"><path d="m15 18-6-6 6-6"/></svg>
+                  <span class="font-bold">返回</span>
+                </div>
+                <div class="flex items-center gap-6 text-[13px] font-bold">
+                  <span id="tab-diagnosis" class="cursor-pointer nav-tab active" onclick="switchView('diagnosis')">辅助诊疗</span>
+                  <span id="tab-original" class="cursor-pointer nav-tab text-slate-400" onclick="switchView('original')">原始病历</span>
+                </div>
+              </div>
+
+              <div class="patient-info-bar">
+                <div class="flex items-center gap-3">
+                  <h2 class="text-[18px] font-bold text-slate-800">欧阳正云</h2>
+                  <span class="text-slate-300 text-[16px]">|</span>
+                  <div class="flex items-center gap-2 text-[#FF7D7D] text-[12px] font-bold">
+                    <span>女</span>
+                    <span class="text-slate-200 font-normal">|</span>
+                    <span>50岁</span>
+                  </div>
+                </div>
+                <button class="regenerate-btn">重新生成</button>
+              </div>
+            </div>
+
+            <!-- 诊断结果视图内容 -->
+            <div id="diagnosis-content" class="space-y-6">
+              <!-- 疾病预测 -->
+              <section>
+                <div class="section-title-wrapper">
+                  <div class="section-icon">
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                  </div>
+                  <span class="text-[13px] font-bold text-slate-700" data-prd-id="prd-mr38qv2r-o10su">疾病预测</span>
+                </div>
+
+                <div class="disease-item" id="disease-ami" onclick="toggleDisease(this, 'ami')">
+                  <div class="flex items-center justify-between cursor-pointer">
+                    <div class="flex items-center gap-2">
+                      <div class="w-4 h-4 rounded-full border-2 border-slate-200 flex items-center justify-center radio-circle">
+                        <div class="w-2 h-2 bg-indigo-500 rounded-full hidden"></div>
+                      </div>
+                      <span class="text-[13px] font-bold text-slate-800">急性心肌梗死</span>
+                    </div>
+                    <div class="flex items-center gap-1 text-[11px] text-slate-400">
+                      详情 <svg viewBox="0 0 24 24" class="w-3 h-3 arrow-icon" fill="none" stroke="currentColor" stroke-width="3"><path d="m9 18 6-6-6-6"/></svg>
+                    </div>
+                  </div>
+                  <div class="disease-content">
+                    <div class="diagnosis-basis">
+                      <span class="diagnosis-basis-label">诊断依据:</span>
+                      患者为50岁男性，具有高血压、糖尿病及冠心病高危因素，主诉上腹部疼痛伴背部牵扯痛，同时出现胸闷、压迫感、呼吸不畅及恶心感，符合急性心肌梗死（尤其是下壁或后壁心肌梗死）常表现为上腹痛、恶心及放射痛的临床特征，且文献指出AMI其他非特异性症状包括呼吸困难、恶心、呕吐、上腹不适等，在合并糖尿病人群中需高度警惕<span class="sup-tag" onmouseenter="showTooltip(event, '9')" onmouseleave="hideTooltip()">[9]</span>。
+                    </div>
+                  </div>
+                </div>
+
+                <div class="disease-item" id="disease-ap" onclick="toggleDisease(this, 'ap')">
+                  <div class="flex items-center justify-between cursor-pointer">
+                    <div class="flex items-center gap-2">
+                      <div class="w-4 h-4 rounded-full border-2 border-slate-200 flex items-center justify-center radio-circle">
+                        <div class="w-2 h-2 bg-indigo-500 rounded-full hidden"></div>
+                      </div>
+                      <span class="text-[13px] text-slate-600">急性胰腺炎</span>
+                    </div>
+                    <div class="flex items-center gap-1 text-[11px] text-slate-400">
+                      详情 <svg viewBox="0 0 24 24" class="w-3 h-3 arrow-icon" fill="none" stroke="currentColor" stroke-width="3"><path d="m9 18 6-6-6-6"/></svg>
+                    </div>
+                  </div>
+                  <div class="disease-content">
+                    <div class="diagnosis-basis">
+                      <span class="diagnosis-basis-label">诊断依据:</span>
+                      血清淀粉酶或脂肪酶水平升高至少为正常上限的3倍；腹痛特征符合急性胰腺炎表现<span class="sup-tag" onmouseenter="showTooltip(event, '1')" onmouseleave="hideTooltip()">[1]</span>。
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 其他疾病项保持一致... -->
+              </section>
+
+              <!-- 检验检查和用药建议 -->
+              <section>
+                <div class="section-title-wrapper">
+                  <div class="section-icon">
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                  </div>
+                  <span class="text-[13px] font-bold text-slate-700">检验检查和用药建议</span>
+                  <div class="flex gap-1 ml-auto">
+                    <button class="tab-btn active" onclick="switchTab(this, 'check')">检验检查</button>
+                    <button class="tab-btn inactive" onclick="switchTab(this, 'drug')">药品</button>
+                  </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-100 overflow-hidden" id="table-container">
+                  <table class="result-table" id="check-table">
+                    <thead>
+                      <tr>
+                        <th>类别</th>
+                        <th>检查名称</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>实验室检查</td>
+                        <td>血常规检查</td>
+                      </tr>
+                      <tr>
+                        <td>影像学检查</td>
+                        <td>床旁心电图/超声心动图</td>
+                      </tr>
+                      <tr>
+                        <td>生物标志物</td>
+                        <td>肌钙蛋白 I/T (cTnI/T)</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  
+                  <table class="result-table hidden" id="drug-table">
+                    <thead>
+                      <tr>
+                        <th>药品名称</th>
+                        <th>用法用量</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>阿司匹林</td>
+                        <td>首剂 300mg 嚼服</td>
+                      </tr>
+                      <tr>
+                        <td>替格瑞洛</td>
+                        <td>首剂 180mg，维持 90mg bid</td>
+                      </tr>
+                      <tr>
+                        <td>阿托伐他汀</td>
+                        <td>20-40mg qd</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <!-- 诊疗方案建议 -->
+              <section>
+                <div class="section-title-wrapper">
+                  <div class="section-icon">
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                  </div>
+                  <span class="text-[13px] font-bold text-slate-700">诊疗方案建议</span>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 border border-slate-100 space-y-4" id="treatment-plan-container" data-prd-id="prd-mr2wh6tj-b1rco">
+                  <h4 class="text-[14px] font-bold text-slate-800" id="plan-title">请选择上方疾病以查看诊疗方案</h4>
+                  <div id="plan-content" class="text-[12px] text-slate-400 italic">选中疾病预测中的项后，此处将展示针对性方案...</div>
+                </div>
+              </section>
+
+              <!-- 参考文献 -->
+              <section class="pb-6">
+                <div class="section-title-wrapper">
+                  <div class="section-icon">
+                    <svg viewBox="0 0 24 24" class="w-3 h-3" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                  </div>
+                  <span class="text-[13px] font-bold text-slate-700" data-prd-id="prd-mr38nk1r-2srzy">参考文献</span>
+                </div>
+
+                <div class="space-y-2 px-1">
+                  <p class="text-[11px] text-slate-500 leading-relaxed cursor-pointer hover:text-indigo-500 transition-colors" onclick="openDrawer('1')">1、《临床实践指南（2016）：急性胰腺炎的处理（中文翻译版）》</p>
+                  <p class="text-[11px] text-slate-500 leading-relaxed cursor-pointer hover:text-indigo-500 transition-colors" onclick="openDrawer('2')">2、《急性胰腺炎急诊诊断及治疗专家共识》</p>
+                  <p class="text-[11px] text-slate-500 leading-relaxed cursor-pointer hover:text-indigo-500 transition-colors" onclick="openDrawer('3')">3、《中国肾脏移植受者消化系统并发症临床诊疗指南》</p>
+                  <p class="text-[11px] text-slate-500 leading-relaxed cursor-pointer hover:text-indigo-500 transition-colors" onclick="openDrawer('4')">4、《中国肾脏移植受者消化系统并发症临床诊疗指南》</p>
+                </div>
+              </section>
+
+              <!-- 底部操作按钮与免责声明 -->
+              <div class="border-t border-slate-100 pt-4 pb-10 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <button class="text-slate-400 hover:text-indigo-500 transition-colors">
+                    <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  </button>
+                  <button class="text-slate-400 hover:text-indigo-500 transition-colors">
+                    <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+                  </button>
+                  <button class="text-slate-400 hover:text-indigo-500 transition-colors">
+                    <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg>
+                  </button>
+                  <button class="text-slate-400 hover:text-indigo-500 transition-colors">
+                    <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+                  </button>
+                </div>
+                <span class="text-[11px] text-slate-400">内容基于 AI 生成，仅供参考</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 底部输入栏已移除 -->
+      </main>
+    </div>
+  </div>
+
+  <div id="global-tooltip" class="ref-tooltip"></div>
+
+  <script>
+    const contentTooltip = {
+      "1": "...尽早开通<b>梗死相关血管</b>，恢复心肌灌注，挽救濒死心肌，防止<b>梗死面积扩大</b>，及时处理<b>并发症</b>...",
+      "2": "...对于ST段抬高型心肌梗死，若无禁忌证，应在发病<b>12小时内</b>行急诊<b>PCI治疗</b>...",
+      "3": "...<b>双重抗血小板治疗（DAPT）</b>是AMI治疗的基石，需根据患者<b>出血风险评估</b>调整用药时长...",
+      "9": "...AMI<b>非特异性症状</b>包括呼吸困难、恶心、呕吐、上腹不适等，在合并<b>糖尿病人群</b>中需高度警惕..."
+    };
+
+    function showTooltip(e, id) {
+      const tooltip = document.getElementById('global-tooltip');
+      const desc = contentTooltip[id];
+      const data = refData[id];
+      if (!tooltip || !desc || !data) return;
+
+      tooltip.innerHTML = `<h5><span class="ref-id">[${id}]</span>${data.title}</h5><p>${desc}</p>`;
+      tooltip.classList.add('visible');
+
+      const rect = e.target.getBoundingClientRect();
+      const tooltipHeight = tooltip.offsetHeight || 80;
+      tooltip.style.left = `${rect.left - 100}px`;
+      tooltip.style.top = `${rect.top - tooltipHeight - 12}px`;
+    }
+
+    function hideTooltip() {
+      const tooltip = document.getElementById('global-tooltip');
+      if (tooltip) tooltip.classList.remove('visible');
+    }
+
+    const refData = {
+      "1": { 
+        title: "《临床实践指南（2016）：急性胰腺炎的处理（中文翻译版）》", 
+        fullText: "【诊断路径与基本原则】\n急性心肌梗死（AMI）的诊治应遵循“分层递进、动态评估”的原则。对于经典型AMI，首要任务是排除伪装热及药物热。在进入系统性检查前，必须完成详尽的病史采集和全身体格检查，寻找任何微小的潜在诊断线索（PDC）。\n\n【核心建议】\n1. 基础检查应涵盖：血常规、尿常规、肝肾功能、电解质、血培养（至少2套）、胸部CT及腹部超声。\n2. 若基础检查无阳性发现，应进入第二阶段针对性检查，包括自身抗体筛查（ANA, ANCA等）、特殊病原体血清学（EBV, CMV, 结核IGRA）以及骨髓穿刺。\n3. 对于高度怀疑肿瘤或系统性血管炎但无定位体征者，推荐尽早行18F-FDG PET-CT检查。\n4. 避免在未明确病因前盲目使用抗生素或糖皮质激素，以免掩盖症状或干扰后续活检结果。"
+      },
+      "2": { 
+        title: "《急性胰腺炎急诊诊断及治疗专家共识》", 
+        fullText: "Abstract: Fever of unknown origin (FUO) remains one of the most challenging clinical entities. Since Petersdorf and Beeson first defined FUO in 1961, the spectrum of underlying diseases has shifted significantly towards non-infectious inflammatory diseases (NIIDs) and occult malignancies.\n\nDiagnostic Strategy:\n- A structured diagnostic approach is superior to a 'shotgun' method of ordering tests.\n- The 'PDC-driven' strategy focuses on identifying localizing signs or symptoms through repeated physical examinations. \n- In patients with no PDCs after first-line investigations, the probability of finding an underlying cause decreases, but the prognosis is generally favorable with supportive care if the fever remains stable."
+      },
+      "3": { 
+        title: "《中国肾脏移植受者消化系统并发症临床诊疗指南》", 
+        fullText: "【摘要】\n在分子生物学技术高度发达的21世纪，不明原因发热（FUO）的诊断范式正在发生改变。宏基因组二代测序（mNGS）在识别少见病原体（如巴尔通体、立克次体）方面展现出极高的敏感性。\n\n【主要发现】\n- 研究纳入了2015-2025年间的12个多中心队列，共计4,500名患者。\n- mNGS对感染性FUO’的诊断贡献率从传统培养的35%提升至62%。\n- 尽管技术进步，仍有约15-20%的患者在出院时病因不明。这部分患者中，自身免疫性疾病的迟发表现占主导地位。"
+      },
+      "4": { 
+        title: "《中国肾脏移植受者消化系统并发症临床诊疗指南》", 
+        fullText: "Technical Considerations for FDG-PET/CT in FUO:\n1. Preparation: Patients must fast for at least 6 hours, and blood glucose levels should be <200 mg/dL to ensure optimal tracer uptake in inflammatory/neoplastic lesions.\n2. Interpretation: A positive PET scan provides a potential biopsy site in 70% of cases. However, false positives are common in healing wounds, post-surgical sites, and certain infections.\n3. Clinical Utility: In a meta-analysis of 18 studies, FDG-PET/CT had a sensitivity of 86% and a specificity of 52% for diagnosing the cause of FUO. It is most effective when used as a second-line tool after non-contributory CT scans."
+      },
+      "9": {
+        title: "循证医学文献 [9]",
+        fullText: "【诊断依据补充】\n根据多项临床研究显示，急性心肌梗死（AMI）患者中有约25%-30%的患者首发症状并非典型的胸前区压榨性疼痛，而是表现为上腹部不适、恶心、呕吐等胃肠道症状。这种情况在老年人、女性以及合并糖尿病的患者中尤为常见。\n\n【病理生理机制】\n下壁心肌梗死时，坏死心肌刺激迷走神经，可引起胃肠道症状。同时，膈肌受刺激也可产生上腹部疼痛。因此，在临床诊疗中，对于具有心血管高危因素的患者，出现急性上腹痛时必须常规进行心电图检查以排除心肌梗死。"
+      }
+    };
+
+    function openDrawer(id) {
+      const drawer = document.getElementById('detail-drawer');
+      const overlay = document.getElementById('drawer-overlay');
+      const data = refData[id];
+      if (!drawer || !data) return;
+
+      const titleEl = document.getElementById('drawer-title');
+      const contentEl = document.getElementById('drawer-full-text');
+      
+      if (titleEl) titleEl.innerText = data.title;
+      if (contentEl) contentEl.innerText = data.fullText;
+
+      drawer.classList.add('open');
+      overlay.classList.add('visible');
+    }
+
+    function closeDrawer() {
+       const drawer = document.getElementById('detail-drawer');
+       const caseDrawer = document.getElementById('case-drawer');
+       const overlay = document.getElementById('drawer-overlay');
+       if (drawer) drawer.classList.remove('open');
+       if (caseDrawer) caseDrawer.classList.remove('open');
+       if (overlay) overlay.classList.remove('visible');
+     }
+
+     // 疾病数据模拟 - 丰富诊疗方案内容
+      const diseaseData = {
+        ami: {
+          checks: [
+            { cat: '实验室检查', name: '心肌酶谱 (CK-MB/LDH)' },
+            { cat: '影像学检查', name: '床旁心电图/超声心动图' },
+            { cat: '生物标志物', name: '肌钙蛋白 I/T (cTnI/T)' }
+          ],
+          drugs: [
+            { name: '阿司匹林', dose: '首剂 300mg 嚼服' },
+            { name: '替格瑞洛', dose: '首剂 180mg，维持 90mg bid' },
+            { name: '硝酸甘油', dose: '0.5mg 舌下含服' }
+          ],
+          planTitle: '急性ST段抬高型心肌梗死治疗方案',
+          planHtml: `
+            <div class="text-[12px] text-slate-600 space-y-4 leading-relaxed">
+              <div>
+                <p class="font-bold text-slate-800 mb-1">一、治疗原则</p>
+                尽早开通<b>梗死相关血管</b>，恢复心肌灌注，挽救濒死心肌，防止<b>梗死面积扩大</b>，及时处理<b>并发症</b><span class="sup-tag" onmouseenter="showTooltip(event, '1')" onmouseleave="hideTooltip()">[1]</span><span class="sup-tag" onmouseenter="showTooltip(event, '2')" onmouseleave="hideTooltip()">[2]</span>。
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 mb-1">二、一般治疗</p>
+                - <b>护理与监测</b>：急性期绝对卧床休息，心电监护监测心率、血压、血氧饱和度，除颤仪床旁备用<span class="sup-tag" onmouseenter="showTooltip(event, '1')" onmouseleave="hideTooltip()">[1]</span>。<br>
+                - <b>饮食与生活方式</b>：低盐低脂饮食，保持大便通畅，避免用力排便<span class="sup-tag" onmouseenter="showTooltip(event, '2')" onmouseleave="hideTooltip()">[2]</span>。
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 mb-1">三、药物治疗</p>
+                - <b>抗血小板治疗</b>：常用阿司匹林联合<b>P2Y12受体拮抗剂</b>进行双重抗血小板治疗<span class="sup-tag" onmouseenter="showTooltip(event, '1')" onmouseleave="hideTooltip()">[1]</span><span class="sup-tag" onmouseenter="showTooltip(event, '3')" onmouseleave="hideTooltip()">[3]</span>。<br>
+                - <b>抗凝治疗</b>：常用肝素或低分子肝素<span class="sup-tag" onmouseenter="showTooltip(event, '2')" onmouseleave="hideTooltip()">[2]</span>。
+              </div>
+            </div>`
+        },
+        ap: {
+          checks: [
+            { cat: '实验室检查', name: '血清淀粉酶/脂肪酶测定' },
+            { cat: '影像学检查', name: '腹部增强CT (发病72h后)' },
+            { cat: '实验室检查', name: '血钙/血糖/血脂分析' }
+          ],
+          drugs: [
+            { name: '生长抑素', dose: '250μg/h 持续静脉滴注' },
+            { name: '潘托拉唑', dose: '40mg iv bid' },
+            { name: '加贝酯', dose: '100mg tid' }
+          ],
+          planTitle: '急性胰腺炎临床路径方案',
+          planHtml: `
+            <div class="text-[12px] text-slate-600 space-y-4 leading-relaxed">
+              <div>
+                <p class="font-bold text-slate-800 mb-1">一、治疗原则</p>
+                采取<b>禁食、胃肠减压</b>、抑制胰液分泌及补充血容量等综合措施。防治<b>继发感染</b>及器官功能衰竭<span class="sup-tag" onmouseenter="showTooltip(event, '1')" onmouseleave="hideTooltip()">[1]</span>。
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 mb-1">二、液体复苏</p>
+                早期<b>快速补液</b>以改善胰腺微循环。注意监测尿量及中心静脉压，防止<b>肺水肿</b>发生<span class="sup-tag" onmouseenter="showTooltip(event, '2')" onmouseleave="hideTooltip()">[2]</span>。
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 mb-1">三、营养支持</p>
+                病情允许时尽早实施<b>肠内营养 (EN)</b>，以维持肠道屏障功能，减少<b>内源性感染</b>风险<span class="sup-tag" onmouseenter="showTooltip(event, '3')" onmouseleave="hideTooltip()">[3]</span>。
+              </div>
+            </div>`
+        }
+      };
+
+      let streamingTimer = null;
+
+      // 疾病项切换逻辑
+      function toggleDisease(element, diseaseId, autoExpand = true) {
+        const isExpanded = element.classList.contains('expanded');
+        
+        // 1. 处理 UI 展开收起
+        document.querySelectorAll('.disease-item').forEach(item => {
+          item.classList.remove('expanded');
+        });
+        
+        // 只有在非 autoExpand 或点击已展开项时才收起，否则按指令默认不展开
+        if (autoExpand && !isExpanded) {
+          element.classList.add('expanded');
+        }
+
+        // 2. 处理选中状态 (联动下方内容)
+        document.querySelectorAll('.disease-item').forEach(item => {
+          item.classList.remove('selected');
+        });
+        element.classList.add('selected');
+
+        // 3. 执行联动逻辑
+        updateLinkedContent(diseaseId);
+      }
+
+      function updateLinkedContent(id) {
+        const data = diseaseData[id];
+        if (!data) return;
+
+        // 更新检验检查表
+        const checkTbody = document.querySelector('#check-table tbody');
+        checkTbody.innerHTML = data.checks.map(c => `<tr><td>${c.cat}</td><td>${c.name}</td></tr>`).join('');
+
+        // 更新药品表
+        const drugTbody = document.querySelector('#drug-table tbody');
+        drugTbody.innerHTML = data.drugs.map(d => `<tr><td>${d.name}</td><td>${d.dose}</td></tr>`).join('');
+
+        // 更新诊疗方案 - 停止流式输出，改为直接展示
+        const planTitle = document.getElementById('plan-title');
+        const planContent = document.getElementById('plan-content');
+        
+        planTitle.innerText = data.planTitle;
+        planContent.innerHTML = data.planHtml;
+        planContent.classList.remove('italic', 'text-slate-400');
+        
+        if (streamingTimer) {
+          clearInterval(streamingTimer);
+          streamingTimer = null;
+        }
+      }
+
+     // Tab 切换逻辑
+     function switchTab(btn, type) {
+       // 更新按钮样式
+       const buttons = btn.parentElement.querySelectorAll('.tab-btn');
+       buttons.forEach(b => {
+         b.classList.remove('active');
+         b.classList.add('inactive');
+       });
+       btn.classList.add('active');
+       btn.classList.remove('inactive');
+
+       // 更新表格显示
+       const checkTable = document.getElementById('check-table');
+       const drugTable = document.getElementById('drug-table');
+       
+       if (type === 'check') {
+         checkTable.classList.remove('hidden');
+         drugTable.classList.add('hidden');
+       } else {
+         checkTable.classList.add('hidden');
+         drugTable.classList.remove('hidden');
+       }
+     }
+
+       function openCaseDrawer() {
+         const drawer = document.getElementById('case-drawer');
+         const overlay = document.getElementById('drawer-overlay');
+         if (drawer) drawer.classList.add('open');
+         if (overlay) overlay.classList.add('visible');
+       }
+
+       // 视图切换逻辑 (辅助诊疗 vs 原始病历)
+       function switchView(view) {
+         const diagTab = document.getElementById('tab-diagnosis');
+         const origTab = document.getElementById('tab-original');
+         const diagContent = document.getElementById('diagnosis-content');
+
+         if (view === 'diagnosis') {
+           diagTab.classList.add('active');
+           diagTab.classList.remove('text-slate-400');
+           origTab.classList.remove('active');
+           origTab.classList.add('text-slate-400');
+           diagContent.classList.remove('hidden');
+           // 确保关闭病历抽屉
+           closeDrawer();
+         } else if (view === 'original') {
+           // 点击原始病历 Tab 直接打开抽屉，不切换主视图内容
+           openCaseDrawer();
+           // 保持 Tab 状态（可选，根据交互习惯决定）
+         }
+       }
+  // 初始化
+      window.onload = function() {
+        const firstDisease = document.getElementById('disease-ami');
+        if (firstDisease) {
+          // 默认选中但不展开详情 (传入 autoExpand = false)
+          toggleDisease(firstDisease, 'ami', false);
+        }
+      };
+    </script>
+    <script src="../assets/scripts/page-bridge.js"></script>
+</body>
+</html>

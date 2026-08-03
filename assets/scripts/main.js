@@ -1,6 +1,9 @@
 // main.js
 
-// --- 全局配置 ---
+// --- 全局配置（运行时状态）---
+// 注意：AppConfig 是工作台运行时状态（如交付模式开关），
+// 与 project-data.js 中的 ProjectConfig（项目元信息：标题/版本）职责不同，
+// 勿混淆。AppConfig 由工作台内部逻辑维护，AI 无需修改。
 window.AppConfig = {
   isDeliveryMode: false // 交付模式开关：true 为纯净展示，false 为允许编辑
 };
@@ -196,6 +199,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (versionEl && window.ProjectConfig.version) versionEl.textContent = window.ProjectConfig.version;
   }
 
+  // 0.5. 渲染全局说明（从 project-data.js 的 OverviewContent 读取并用 marked + DOMPurify 渲染）
+  // 不依赖 iframe，file:// 和 localhost 行为一致
+  function renderOverview() {
+    const previewEl = document.getElementById('global-req-preview');
+    if (!previewEl) return;
+    const md = (window.OverviewContent || '').trim();
+    if (!md) {
+      previewEl.innerHTML = '<p style="color:#94A3B8;font-style:italic;">尚未配置全局说明内容。请在编辑视图点击"编辑内容"添加。</p>';
+      return;
+    }
+    if (typeof marked !== 'undefined') {
+      const html = marked.parse(md);
+      const safeHtml = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(html) : html;
+      previewEl.innerHTML = safeHtml;
+    } else {
+      // 降级：marked 未加载时纯文本显示
+      previewEl.textContent = md;
+    }
+  }
+  renderOverview();
+
   // 1. 全局抽屉逻辑
   const reqBtn = document.getElementById('global-req-btn');
   const reqDrawer = document.getElementById('global-req-drawer');
@@ -251,17 +275,10 @@ document.addEventListener('DOMContentLoaded', () => {
     reqPreview.classList.add('hidden');
     reqEditorContainer.classList.remove('hidden');
     editReqBtn.classList.add('hidden');
-    
-    // 尝试从 iframe 获取现有内容 (如果是本地 file:// 可能获取不到，这里仅做尝试)
-    try {
-      const frameDoc = document.getElementById('global-req-frame').contentDocument;
-      if (frameDoc && frameDoc.body) {
-        // 简单处理，提取 body 内的内容
-        reqTextarea.value = frameDoc.body.innerHTML.trim() || '';
-      }
-    } catch (e) {
-      console.warn('Cannot read iframe content due to cross-origin constraints. Textarea will be empty.');
-    }
+
+    // 从 project-data.js 的 OverviewContent 读取原始 Markdown
+    // 不依赖 iframe，file:// 和 localhost 行为一致
+    reqTextarea.value = (window.OverviewContent || '').trim();
   }
 
   function cancelReqEdit() {
@@ -282,23 +299,25 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // 本地预览：尝试更新 iframe 内容
-    try {
-      const frameDoc = document.getElementById('global-req-frame').contentDocument;
-      if (frameDoc && frameDoc.body) {
-        frameDoc.body.innerHTML = content;
-      }
-    } catch (e) {
-      console.warn('Cannot update iframe for preview due to cross-origin.');
+    // 本地预览：写入 window.OverviewContent 并重新渲染到预览区
+    window.OverviewContent = content;
+    const previewEl = document.getElementById('global-req-preview');
+    if (previewEl && typeof marked !== 'undefined') {
+      const html = marked.parse(content);
+      const safeHtml = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(html) : html;
+      previewEl.innerHTML = safeHtml;
     }
-    
+
     // 切换回预览视图
     cancelReqEdit();
 
-    const prompt = `请修改全局需求文档 (路径：./docs/overview.html)：
-请用以下代码完整替换该文件的全部内容（包含 DOCTYPE、html、head、body）：
+    // prompt 让 AI 更新 project-data.js 中的 OverviewContent 变量
+    // 注意：不要求 AI 改任何 HTML 文件，只改 project-data.js 的字符串变量
+    const prompt = `请修改全局需求文档 (路径：./data/project-data.js)：
+该文件中有一个 \`window.OverviewContent\` 变量（反引号字符串），专门存储原始 Markdown 内容。
+请用以下 Markdown 内容**完整替换**该变量的字符串值（不要改动文件其他部分，保持反引号包裹，注意内部反引号需用 \\\` 转义）：
 
-\`\`\`html
+\`\`\`markdown
 ${content}
 \`\`\``;
 
@@ -522,7 +541,7 @@ ${content}
       toContext = `名为 "${pNode ? pNode.name : ''}" 的文件夹 (id: "${toParentId}") 的 children 数组`;
     }
 
-    const prompt = `请修改左侧导航配置 (assets/scripts/project-data.js 中的 window.navConfig)：
+    const prompt = `请修改左侧导航配置 (data/project-data.js 中的 window.navConfig)：
 将 id 为 "${dragNodeId}" 的节点（${dragNode.name}），移动到 ${toContext} 中，使该节点在新数组的索引位置为 ${newIndex}。
 注意：只需移动节点，不要修改其内部数据（id/name/url 等保持不变）。`;
 
@@ -1078,7 +1097,7 @@ ${content}
             renderNav();
             initSortable(document.body.classList.contains('is-edit-view'));
             
-            const prompt = `请修改左侧导航配置 (assets/scripts/project-data.js 中的 window.navConfig)：
+            const prompt = `请修改左侧导航配置 (data/project-data.js 中的 window.navConfig)：
 删除 id 为 "${id}" 的${type === 'folder' ? '文件夹' : '页面'}。
 ${type === 'page' ? `同时，请删除 pages/ 目录下对应的物理 HTML 文件（参考该节点的 url 字段）。` : ''}`;
             navigator.clipboard.writeText(prompt).then(() => {
@@ -1213,7 +1232,7 @@ ${type === 'page' ? `同时，请删除 pages/ 目录下对应的物理 HTML 文
         targetNode.name = newName;
         if (targetNode.type === 'page') targetNode.url = newUrl;
 
-        prompt = `请修改左侧导航配置 (assets/scripts/project-data.js 中的 window.navConfig)：
+        prompt = `请修改左侧导航配置 (data/project-data.js 中的 window.navConfig)：
 找到 id 为 "${targetId}" 的节点 (当前名称: "${targetNode ? targetNode.name : ''}")。
 将其名称修改为：${newName}`;
         if (type === 'page' && newUrl) {
@@ -1247,7 +1266,7 @@ ${type === 'page' ? `同时，请删除 pages/ 目录下对应的物理 HTML 文
         }
 
         prompt = `请执行以下操作：
-1. 修改左侧导航配置 (assets/scripts/project-data.js 中的 window.navConfig)：
+1. 修改左侧导航配置 (data/project-data.js 中的 window.navConfig)：
 在 ${parentContext}，添加一个新${addType === 'folder' ? '文件夹' : '页面'}。
 名称：${newName}`;
         if (addType === 'page') {
@@ -1446,7 +1465,7 @@ ${type === 'page' ? `同时，请删除 pages/ 目录下对应的物理 HTML 文
       versionDisplay.textContent = newVersion;
 
       // 生成提示词
-      const prompt = `请修改项目元信息 (assets/scripts/project-data.js 中的 window.ProjectConfig)：
+      const prompt = `请修改项目元信息 (data/project-data.js 中的 window.ProjectConfig)：
 将 title 字段更新为：${newTitle}
 将 version 字段更新为：${newVersion}`;
 
