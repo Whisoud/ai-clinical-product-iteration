@@ -159,6 +159,12 @@ window.PrdStore["prd-mt2ka88w-3k9tc"] = {
   pageUrl: "./pages/Knowledge_Q&A_V1.0.2.html"
 };
 
+window.PrdStore["prd-msfu6flz-gjmdd"] = {
+  title: "思考过程",
+  desc: "**时间规则**\n\n总计时器为前端计时，每条的时间后端返回\n\n**文案对应**\n\n正在分析问题 - 分析完成\n\n正在检索引用知识库 - 检索引用完成\n\n正在整理回答 - 整理完成",
+  pageUrl: "./pages/Knowledge_Q&A_V1.0.2.html"
+};
+
 window.PrdStore["prd-mt2kb11x-5w8re"] = {
   title: "「试试这些」场景示例轮播",
   desc: "**数据来源** \n\n- 每个场景一列（循证问答=示例问题列表，病历分析=示例病历卡），纵向高度恒定，新增场景不增加欢迎区高度；场景副标题内联于列标题\n\n**交互**\n\n- 左右悬浮箭头按列翻页，到头自动置灰；支持触控板横滑与鼠标拖拽（拖拽超 5px 不触发点击）\n- 点击示例即发起对应会话（思考过程 + 流式输出 + 文献角标）",
