@@ -11,26 +11,6 @@ window.ProjectConfig = {
 // 1. 左侧导航树配置
 window.navConfig = [
   {
-    "id": "group-clinical-diagnosis",
-    "name": "临床辅助诊疗",
-    "type": "folder",
-    "expanded": true,
-    "children": [
-      {
-        "id": "page-auxiliary-diagnosis",
-        "name": "辅助诊疗页面V1.0.1",
-        "url": "./pages/Auxiliary_diagnosis.html",
-        "type": "page"
-      },
-      {
-        "id": "page-medicalrecord-generation",
-        "name": "病历生成页面 v1.0.1",
-        "url": "./pages/medicalrecord_generation.html",
-        "type": "page"
-      }
-    ]
-  },
-  {
     "id": "group-knowledge-qa",
     "name": "临床循证知识问答",
     "type": "folder",
@@ -40,6 +20,34 @@ window.navConfig = [
         "id": "page-knowledge-qa-v102",
         "name": "知识问答页面 V1.0.1",
         "url": "./pages/Knowledge_Q&A_V1.0.1.html",
+        "type": "page"
+      }
+    ]
+  },
+  {
+    "id": "new-1786072354117",
+    "name": "门诊病历生成",
+    "type": "folder",
+    "expanded": true,
+    "children": [
+      {
+        "id": "page-medicalrecord-generation",
+        "name": "病历生成页面 v1.0.1",
+        "url": "./pages/medicalrecord_generation.html",
+        "type": "page"
+      }
+    ]
+  },
+  {
+    "id": "new-1786072367258",
+    "name": "临床辅助诊疗",
+    "type": "folder",
+    "expanded": true,
+    "children": [
+      {
+        "id": "page-auxiliary-diagnosis",
+        "name": "辅助诊疗页面V1.0.1",
+        "url": "./pages/Auxiliary_diagnosis.html",
         "type": "page"
       }
     ]
